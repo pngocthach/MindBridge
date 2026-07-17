@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EduOne AI — Project Scope Preview</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #647089;
+      --line: #e5e9f2;
+      --surface: #ffffff;
+      --soft: #f5f7fb;
+      --blue: #315efb;
+      --blue-soft: #eaf0ff;
+      --green: #0d8a67;
+      --green-soft: #e8f8f2;
+      --orange: #b96b13;
+      --orange-soft: #fff5e5;
+      --red: #bb3b4a;
+      --red-soft: #fff0f2;
+      --shadow: 0 18px 45px rgba(28, 45, 86, .09);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #f0f3f9;
+      font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 28px 20px 56px; }
+    .hero {
+      position: relative; overflow: hidden; color: #fff; border-radius: 24px; padding: 42px;
+      background: linear-gradient(125deg, #13234b 0%, #2c51bd 55%, #4b7cff 100%);
+      box-shadow: var(--shadow);
+    }
+    .hero:after { content: ""; position: absolute; width: 300px; height: 300px; right: -80px; top: -120px; border: 45px solid rgba(255,255,255,.1); border-radius: 50%; }
+    .eyebrow { position: relative; z-index: 1; text-transform: uppercase; letter-spacing: .13em; font-size: 11px; font-weight: 800; opacity: .75; }
+    h1 { position: relative; z-index: 1; max-width: 700px; margin: 10px 0 12px; font-size: clamp(30px, 5vw, 52px); line-height: 1.08; letter-spacing: -.04em; }
+    .hero p { position: relative; z-index: 1; max-width: 740px; margin: 0; color: #dce5ff; font-size: 17px; }
+    .hero-meta { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 25px; }
+    .pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; font-size: 12px; font-weight: 700; }
+    .section { margin-top: 28px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 13px; }
+    h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
+    h3 { margin: 0 0 7px; font-size: 17px; }
+    .sub { color: var(--muted); margin: 3px 0 0; }
+    .grid { display: grid; gap: 15px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 17px; padding: 21px; box-shadow: 0 6px 18px rgba(28, 45, 86, .035); }
+    .card p { margin: 5px 0 0; color: var(--muted); }
+    .number { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 10px; margin-bottom: 13px; background: var(--blue-soft); color: var(--blue); font-weight: 900; }
+    .icon { font-size: 22px; margin-bottom: 6px; }
+    .tag { display: inline-block; padding: 3px 8px; border-radius: 6px; margin-top: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .tag.must { color: var(--green); background: var(--green-soft); }
+    .tag.maybe { color: var(--orange); background: var(--orange-soft); }
+    .tag.out { color: var(--red); background: var(--red-soft); }
+    .actor { display: flex; gap: 13px; align-items: flex-start; }
+    .actor-icon { display: grid; place-items: center; flex: 0 0 43px; height: 43px; border-radius: 13px; background: var(--blue-soft); font-size: 21px; }
+    ul { margin: 10px 0 0; padding-left: 19px; color: var(--muted); }
+    li + li { margin-top: 4px; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px; align-items: stretch; }
+    .step { position: relative; min-height: 126px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .step:not(:last-child):after { content: "→"; position: absolute; right: -18px; top: 45px; z-index: 2; color: var(--blue); font-size: 22px; font-weight: 800; }
+    .step b { display: block; margin-bottom: 5px; font-size: 13px; }
+    .step span { color: var(--muted); font-size: 13px; }
+    .scope-table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 15px; background: var(--surface); border: 1px solid var(--line); }
+    .scope-table th, .scope-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .scope-table tr:last-child td { border-bottom: 0; }
+    .scope-table th { background: var(--soft); color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .scope-table td:first-child { width: 22%; font-weight: 800; }
+    .checklist { display: grid; gap: 9px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: 11px; background: var(--soft); }
+    .check:before { content: "✓"; display: grid; place-items: center; flex: 0 0 20px; height: 20px; border-radius: 50%; color: #fff; background: var(--green); font-size: 12px; font-weight: 900; }
+    .warning { padding: 17px 19px; border-left: 4px solid var(--orange); border-radius: 12px; background: var(--orange-soft); color: #75440c; }
+    .footer { margin-top: 28px; color: var(--muted); text-align: center; font-size: 12px; }
+    @media (max-width: 800px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } .flow { grid-template-columns: 1fr; } .step:not(:last-child):after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -23px; } .hero { padding: 29px 24px; } .scope-table { font-size: 13px; } .scope-table th, .scope-table td { padding: 11px 10px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div class="eyebrow">EduOne Platform · Project Scope Preview</div>
+      <h1>AI cá nhân hóa lộ trình học & tạo học liệu</h1>
+      <p>Prototype tiếng Việt giúp EduOne đề xuất nội dung phù hợp cho từng học viên và rút ngắn quy trình tạo bài học bằng AI — luôn có con người kiểm duyệt trước khi xuất bản.</p>
+      <div class="hero-meta">
+        <span class="pill">🇻🇳 Tiếng Việt bắt buộc</span>
+        <span class="pill">🎓 K-12</span>
+        <span class="pill">📚 1 khóa học</span>
+        <span class="pill">👥 1 lớp · 20 học viên</span>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Project trong một câu</h2><p class="sub">Một vertical slice chạy được từ dữ liệu → AI → người dùng → log.</p></div></div>
+      <div class="card"><p style="font-size:18px;color:var(--ink);margin:0"><strong>Học viên</strong> nhận bài học/bài tập phù hợp với điểm yếu và tốc độ học của mình; <strong>content team</strong> dùng AI tạo bản nháp học liệu, chỉnh sửa, duyệt rồi mới publish.</p></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Actors</h2><p class="sub">Ai sử dụng hoặc chịu ảnh hưởng bởi hệ thống?</p></div></div>
+      <div class="grid grid-3">
+        <article class="card actor"><div class="actor-icon">🧑‍🎓</div><div><h3>Học viên</h3><p>Xem tiến độ, nhận đề xuất cá nhân hóa, học bài bổ trợ và làm quiz.</p><span class="tag must">Primary actor</span></div></article>
+        <article class="card actor"><div class="actor-icon">🧑‍💻</div><div><h3>Content / Curriculum team</h3><p>Nhập yêu cầu, tạo bản nháp AI, chỉnh sửa, approve/reject và publish nội dung.</p><span class="tag must">Primary actor</span></div></article>
+        <article class="card actor"><div class="actor-icon">👩‍🏫</div><div><h3>Giáo viên tình nguyện</h3><p>Xem tiến độ hoặc khó khăn của học viên; không cần xây full teacher portal trong MVP.</p><span class="tag maybe">Secondary actor</span></div></article>
+        <article class="card actor"><div class="actor-icon">⚙️</div><div><h3>Recommendation engine</h3><p>Phân tích kết quả học tập, chọn nội dung và tạo lý do đề xuất.</p><span class="tag must">System actor</span></div></article>
+        <article class="card actor"><div class="actor-icon">✨</div><div><h3>AI content generator</h3><p>Tạo bản nháp bài học, bài tập, quiz theo chủ đề, lớp và độ khó.</p><span class="tag must">System actor</span></div></article>
+        <article class="card actor"><div class="actor-icon">🔌</div><div><h3>EduOne integration</h3><p>Trong prototype có thể là dataset/API adapter; tích hợp production là giai đoạn sau.</p><span class="tag maybe">External system</span></div></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Tính năng trong scope</h2><p class="sub">Những phần phải có để demo được bài toán.</p></div></div>
+      <div class="grid grid-2">
+        <article class="card"><div class="number">01</div><h3>Student profile & learning signals</h3><ul><li>Hồ sơ trình độ, mục tiêu, tiến độ.</li><li>Điểm quiz, chủ đề sai, thời gian hoàn thành.</li><li>Xử lý dữ liệu đa dạng và có thể thiếu.</li></ul><span class="tag must">Must-have</span></article>
+        <article class="card"><div class="number">02</div><h3>Cá nhân hóa lộ trình</h3><ul><li>Đề xuất bài tiếp theo, bài bổ trợ hoặc bài nâng cao.</li><li>Điều chỉnh theo điểm yếu và tốc độ học.</li><li>Hai học viên khác nhau phải có thể nhận đề xuất khác nhau.</li></ul><span class="tag must">Must-have</span></article>
+        <article class="card"><div class="number">03</div><h3>Explainable recommendation</h3><ul><li>Hiển thị lý do bằng tiếng Việt đơn giản.</li><li>Lưu input signals đã ảnh hưởng đến quyết định.</li><li>Có recommendation log theo từng học viên.</li></ul><span class="tag must">Must-have</span></article>
+        <article class="card"><div class="number">04</div><h3>AI content drafting</h3><ul><li>Nhập chủ đề, lớp, mục tiêu, độ khó và loại nội dung.</li><li>Sinh bài giảng, ví dụ, bài tập, quiz, đáp án.</li><li>Đầu ra theo cấu trúc cố định để dễ kiểm tra.</li></ul><span class="tag must">Must-have</span></article>
+        <article class="card"><div class="number">05</div><h3>Human review workflow</h3><ul><li>Draft → in review → approved → published.</li><li>Reviewer chỉnh sửa trực tiếp bản nháp.</li><li>Chặn publish nếu chưa được approve.</li></ul><span class="tag must">Must-have</span></article>
+        <article class="card"><div class="number">06</div><h3>Impact & production logs</h3><ul><li>Log các lần đề xuất và trạng thái nội dung.</li><li>Ghi thời gian AI tạo, review và approve.</li><li>So sánh thời gian thủ công với quy trình AI.</li></ul><span class="tag must">Must-have</span></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Hai luồng demo chính</h2><p class="sub">Mỗi luồng phải chạy end-to-end, không chỉ là màn hình tĩnh.</p></div></div>
+      <div class="card" style="margin-bottom:15px"><h3>Luồng A · Cá nhân hóa cho học viên</h3><div class="flow"><div class="step"><b>1. Activity</b><span>Học viên làm quiz và học bài.</span></div><div class="step"><b>2. Analyze</b><span>Hệ thống phát hiện điểm yếu/tốc độ.</span></div><div class="step"><b>3. Recommend</b><span>Chọn bài phù hợp với trạng thái.</span></div><div class="step"><b>4. Explain</b><span>Hiển thị lý do và dữ liệu.</span></div><div class="step"><b>5. Log</b><span>Lưu đề xuất theo học viên.</span></div></div></div>
+      <div class="card"><h3>Luồng B · Tạo và duyệt học liệu</h3><div class="flow"><div class="step"><b>1. Request</b><span>Content team nhập yêu cầu.</span></div><div class="step"><b>2. Generate</b><span>AI tạo bản nháp tiếng Việt.</span></div><div class="step"><b>3. Review</b><span>Người dùng chỉnh sửa nội dung.</span></div><div class="step"><b>4. Approve</b><span>Duyệt hoặc từ chối bản nháp.</span></div><div class="step"><b>5. Publish</b><span>Chỉ bản đã duyệt mới được publish.</span></div></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Scope boundary</h2><p class="sub">Giữ MVP nhỏ để bảo đảm demo có chiều sâu.</p></div></div>
+      <table class="scope-table">
+        <thead><tr><th>Nhóm</th><th>Trong scope</th><th>Ngoài scope MVP</th></tr></thead>
+        <tbody>
+          <tr><td>Dữ liệu</td><td>Dataset mô phỏng 20 học viên, 1 khóa học, dữ liệu học tập khác nhau.</td><td>Kho dữ liệu production toàn EduOne, hàng triệu học viên.</td></tr>
+          <tr><td>Học tập</td><td>Đề xuất bài học/bài tập theo trình độ, điểm yếu và tốc độ.</td><td>Adaptive learning đầy đủ cho mọi môn và mọi khóa.</td></tr>
+          <tr><td>Nội dung</td><td>AI tạo draft bài học, bài tập, quiz; reviewer chỉnh sửa và approve.</td><td>Tự động publish không có human review; fine-tune foundation model riêng.</td></tr>
+          <tr><td>Tích hợp</td><td>Mock dataset hoặc adapter/API đủ cho pilot demo.</td><td>Xây lại toàn bộ EduOne hoặc production integration nếu chưa có API.</td></tr>
+          <tr><td>Người dùng</td><td>Student view và content reviewer view; teacher view tối thiểu.</td><td>Full LMS, điểm danh, thanh toán, CRM, mobile app.</td></tr>
+          <tr><td>Ngôn ngữ</td><td>Tiếng Việt tự nhiên, đơn giản, phù hợp K-12.</td><td>Đa ngôn ngữ là yêu cầu bắt buộc.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Definition of Done</h2><p class="sub">Prototype được xem là đạt khi chứng minh đủ các điểm sau.</p></div></div>
+      <div class="card checklist">
+        <div class="check">Hai học viên có dữ liệu khác nhau nhận được hai đề xuất khác nhau.</div>
+        <div class="check">Mỗi đề xuất có lý do cụ thể dựa trên dữ liệu học tập.</div>
+        <div class="check">Recommendation log cho thấy học viên, nội dung, signals và thời điểm.</div>
+        <div class="check">AI tạo được học liệu tiếng Việt theo yêu cầu đầu vào.</div>
+        <div class="check">Nội dung chưa approve bị chặn khỏi trạng thái published.</div>
+        <div class="check">Demo chạy được trên 1 khóa học, 1 lớp và 20 học viên.</div>
+        <div class="check">Có live URL hoặc video, public GitHub, kiến trúc giải thích được và pilot roadmap 1–2 trang.</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="warning"><strong>Lưu ý thiết kế:</strong> LLM không nên tự quyết định hoàn toàn lộ trình. Recommendation engine cần có rule/logic kiểm soát được; AI chủ yếu hỗ trợ diễn giải và sinh nội dung. Mọi học liệu giáo dục phải qua human review trước khi đến học viên.</div>
+    </section>
+
+    <footer class="footer">EduOne AI · Scope preview · Derived from docs/requirements · Draft for project alignment</footer>
+  </main>
+</body>
+</html>
