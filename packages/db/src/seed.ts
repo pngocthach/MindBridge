@@ -371,7 +371,6 @@ async function seed(): Promise<void> {
 			runId: ids.recommendationRun,
 			contentVersionId: ids.conditionVersion,
 			targetSkillId: ids.conditionSkill,
-			blockingSkillId: ids.conditionSkill,
 			reasonVi:
 				"Bạn cần củng cố điều kiện if/else trước khi tiếp tục với vòng lặp.",
 			rank: 1,
@@ -379,4 +378,8 @@ async function seed(): Promise<void> {
 		.onConflictDoNothing();
 }
 
-await seed();
+try {
+	await seed();
+} finally {
+	await db.$client.end();
+}

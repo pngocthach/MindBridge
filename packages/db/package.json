@@ -14,7 +14,7 @@
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "pnpm exec tsx --env-file=../../apps/server/.env src/seed.ts",
+		"db:seed": "SKIP_ENV_VALIDATION=1 pnpm exec tsx src/seed.ts",
 		"db:migrate": "drizzle-kit migrate"
 	},
 	"dependencies": {

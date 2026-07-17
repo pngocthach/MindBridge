@@ -11,6 +11,13 @@ The maintained declarations are:
 Each schema file links back to this document. `packages/db/src/schema/index.ts` exports the complete Drizzle schema.
 
 ## Commands
+`DATABASE_URL` must be set in the environment before running any database command. For example:
+
+```bash
+DATABASE_URL=postgres://… pnpm db:migrate
+DATABASE_URL=postgres://… pnpm db:seed
+```
+
 
 ```bash
 pnpm db:generate # Generate a Drizzle migration after schema changes.
@@ -37,8 +44,9 @@ flowchart LR
   Run --> Recommendation
   Recommendation --> Version
   Document[Source document] --> Chunk[Source chunk]
-  Chunk --> Generation[Content generation]
-  Generation --> Version
+  Chunk --> Citation[Content source reference]
+  Citation --> Version
+  Generation[Content generation] --> Version
 ```
 
 ## Learning and classes
