@@ -1,8 +1,20 @@
-import { Button } from "@MindBridge/ui/components/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@MindBridge/ui/components/card";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@MindBridge/ui/components/empty";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-import { authClient } from "@/lib/auth-client";
+import Loader from "@/components/loader";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_auth/dashboard")({
@@ -10,27 +22,54 @@ export const Route = createFileRoute("/_auth/dashboard")({
 });
 
 function RouteComponent() {
-	const navigate = useNavigate();
 	const { session } = Route.useRouteContext();
 	const privateData = useQuery(orpc.privateData.queryOptions());
-	const role = session.data?.user.role;
 
-	const handleSignOut = async () => {
-		await authClient.signOut();
-		await navigate({ to: "/login" });
-	};
+	if (privateData.isPending) {
+		return <Loader />;
+	}
+
+	if (privateData.isError) {
+		return (
+			<section
+				aria-live="polite"
+				className="rounded-lg border border-destructive/30 bg-destructive/10 p-6"
+				role="alert"
+			>
+				<h1 className="font-semibold text-lg">Không thể tải tổng quan</h1>
+				<p className="mt-1 text-muted-foreground text-sm">
+					Hãy thử lại sau ít phút.
+				</p>
+			</section>
+		);
+	}
+
+	if (!privateData.data) {
+		return (
+			<Empty>
+				<EmptyHeader>
+					<EmptyTitle>Chưa có dữ liệu tổng quan</EmptyTitle>
+					<EmptyDescription>
+						Dữ liệu học tập sẽ xuất hiện khi bạn bắt đầu sử dụng MindBridge.
+					</EmptyDescription>
+				</EmptyHeader>
+			</Empty>
+		);
+	}
 
 	return (
-		<div>
-			<nav aria-label="Account navigation">
-				<p>Signed in as {role}</p>
-				<Button onClick={handleSignOut} type="button">
-					Sign out
-				</Button>
-			</nav>
-			<h1>Dashboard</h1>
-			<p>Welcome {session.data?.user.name}</p>
-			<p>API: {privateData.data?.message}</p>
-		</div>
+		<Card>
+			<CardHeader>
+				<CardTitle>Xin chào, {session.data?.user.name}</CardTitle>
+				<CardDescription>
+					Tổng quan cá nhân của bạn sẽ được cập nhật tại đây.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<p className="text-muted-foreground text-sm">
+					{privateData.data.message}
+				</p>
+			</CardContent>
+		</Card>
 	);
 }
