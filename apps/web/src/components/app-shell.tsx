@@ -42,6 +42,12 @@ const navItems: readonly NavItem[] = [
 	{ icon: ShieldCheck, label: "Admin Console", roles: ["admin"], to: "/admin" },
 	{
 		icon: FileStack,
+		label: "Kiểm duyệt học liệu",
+		roles: ["admin"],
+		to: "/admin-content",
+	},
+	{
+		icon: FileStack,
 		label: "Content Studio",
 		roles: ["admin", "editor"],
 		to: "/content-studio",
