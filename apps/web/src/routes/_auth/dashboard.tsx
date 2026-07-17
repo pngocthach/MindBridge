@@ -32,7 +32,6 @@ function RouteComponent() {
 	if (privateData.isError) {
 		return (
 			<section
-				aria-live="polite"
 				className="rounded-lg border border-destructive/30 bg-destructive/10 p-6"
 				role="alert"
 			>
