@@ -1,0 +1,36 @@
+{
+	"dependencies": {
+		"@MindBridge/env": "workspace:*",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@MindBridge/config": "workspace:*",
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"ultracite": "7.9.3",
+		"@biomejs/biome": "2.5.2",
+		"turbo": "^2.10.2"
+	},
+	"name": "MindBridge",
+	"scripts": {
+		"dev": "turbo run dev",
+		"build": "turbo run build",
+		"check-types": "turbo run check-types",
+		"dev:web": "turbo run dev -F web",
+		"dev:server": "turbo run dev -F server",
+		"db:push": "turbo run db:push -F @MindBridge/db",
+		"db:studio": "turbo run db:studio -F @MindBridge/db",
+		"db:generate": "turbo run db:generate -F @MindBridge/db",
+		"db:migrate": "turbo run db:migrate -F @MindBridge/db",
+		"check": "ultracite check",
+		"fix": "ultracite fix"
+	},
+	"type": "module",
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"private": true,
+	"packageManager": "pnpm@11.3.0"
+}

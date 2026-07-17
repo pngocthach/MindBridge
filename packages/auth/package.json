@@ -1,0 +1,24 @@
+{
+	"name": "@MindBridge/auth",
+	"type": "module",
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		},
+		"./*": {
+			"default": "./src/*.ts"
+		}
+	},
+	"scripts": {},
+	"dependencies": {
+		"@MindBridge/db": "workspace:*",
+		"@MindBridge/env": "workspace:*",
+		"better-auth": "catalog:",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@MindBridge/config": "workspace:*",
+		"typescript": "catalog:"
+	}
+}

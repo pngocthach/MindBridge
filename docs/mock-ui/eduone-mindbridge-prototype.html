@@ -1,34 +1,721 @@
 <!doctype html>
 <html lang="vi">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EduOne MindBridge — UI Prototype</title>
-<style>
-:root{--ink:#172033;--muted:#68738a;--line:#e5eaf2;--bg:#f4f6fa;--surface:#fff;--blue:#315efb;--blue2:#eaf0ff;--green:#0d8a67;--green2:#e7f8f1;--orange:#b86b14;--orange2:#fff4e3;--red:#b43e4c;--shadow:0 14px 36px #1b2d5d12}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button{font:inherit;cursor:pointer;border:0}.app{max-width:1440px;margin:auto;min-height:100vh}.top{height:70px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px;font-weight:850;font-size:18px}.logo{display:grid;place-items:center;width:35px;height:35px;border-radius:11px;background:linear-gradient(135deg,#315efb,#6c8cff);color:#fff;font-size:18px}.brand small{display:block;color:var(--muted);font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}.top-right{display:flex;align-items:center;gap:10px}.role{padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--muted);font-size:12px}.avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#dfe7ff;color:var(--blue);font-weight:800}.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 70px)}.side{padding:23px 14px;background:#fff;border-right:1px solid var(--line)}.side-label{margin:13px 12px 7px;color:#9aa3b4;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.nav{width:100%;padding:11px 12px;margin:2px 0;border-radius:9px;background:transparent;color:var(--muted);text-align:left}.nav:hover,.nav.active{background:var(--blue2);color:var(--blue);font-weight:750}.content{padding:30px;max-width:1200px;width:100%;margin:auto}.kicker{color:var(--blue);font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.title{margin:5px 0 4px;font-size:30px;letter-spacing:-.04em}.muted{color:var(--muted)}.subtitle{margin:0;color:var(--muted)}.grid{display:grid;gap:15px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:20px;border:1px solid var(--line);border-radius:15px;background:var(--surface);box-shadow:var(--shadow)}.card h3{margin:0 0 5px;font-size:16px}.metric{font-size:29px;font-weight:850;letter-spacing:-.04em}.metric-label{color:var(--muted);font-size:12px}.trend{margin-top:8px;color:var(--green);font-size:12px;font-weight:750}.section{margin-top:24px}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:12px}.section-head h2{margin:0;font-size:19px;letter-spacing:-.02em}.btn{padding:10px 14px;border-radius:9px;background:var(--blue);color:#fff;font-weight:750}.btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.green{background:var(--green)}.btn.small{padding:7px 10px;font-size:12px}.badge{display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800}.b-blue{background:var(--blue2);color:var(--blue)}.b-green{background:var(--green2);color:var(--green)}.b-orange{background:var(--orange2);color:var(--orange)}.b-red{background:#fff0f2;color:var(--red)}.bar{height:8px;border-radius:99px;background:#edf0f6;overflow:hidden}.bar i{display:block;height:100%;border-radius:inherit;background:var(--blue)}.bar.green i{background:var(--green)}.bar.orange i{background:#e6a342}.student{display:flex;align-items:center;gap:11px}.student .avatar{width:38px;height:38px}.student-name{font-weight:780}.student-meta{color:var(--muted);font-size:12px}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}.table th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.table tr:last-child td{border:0}.recommend{display:flex;gap:13px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff}.rec-icon{display:grid;place-items:center;flex:0 0 36px;height:36px;border-radius:10px;background:var(--blue2);color:var(--blue);font-size:17px}.rec-title{font-weight:780}.rec-reason{margin-top:3px;color:var(--muted);font-size:12px}.timeline{display:grid;gap:0}.event{display:grid;grid-template-columns:70px 18px 1fr;gap:8px;min-height:58px}.event time{color:var(--muted);font-size:11px}.dot{position:relative;display:flex;justify-content:center}.dot:before{content:"";width:10px;height:10px;margin-top:4px;border-radius:50%;background:var(--blue);z-index:1}.dot:after{content:"";position:absolute;top:14px;bottom:0;width:1px;background:#dce2ee}.event:last-child .dot:after{display:none}.event-text{font-size:12px}.mini-list{display:grid;gap:10px}.mini-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.mini-item:last-child{border:0}.icon-square{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--blue2)}.content-row{display:flex;align-items:center;gap:13px}.content-row .info{flex:1}.content-row strong{display:block}.content-row small{color:var(--muted)}.tabs{display:flex;gap:6px;padding:4px;border-radius:11px;background:#eef1f7}.tab{padding:8px 12px;border-radius:8px;background:transparent;color:var(--muted);font-weight:700}.tab.active{background:#fff;color:var(--blue);box-shadow:0 2px 7px #26355a14}.hero-student{padding:26px;border-radius:17px;color:#fff;background:linear-gradient(125deg,#14264e,#315efb)}.hero-student h2{margin:3px 0 6px;font-size:25px}.hero-student p{margin:0;color:#dbe4ff}.dark-card{background:#1d2b4d;color:#fff;border:0}.dark-card .muted{color:#bdc9e7}.ring{display:grid;place-items:center;width:100px;height:100px;border-radius:50%;background:conic-gradient(#72d4b1 0 72%,#324566 72%);position:relative}.ring:after{content:"";position:absolute;inset:10px;border-radius:50%;background:#1d2b4d}.ring b{position:relative;z-index:1;font-size:22px}.split{display:grid;grid-template-columns:1.35fr .65fr;gap:15px}.editor{min-height:190px;padding:17px;border:1px solid var(--line);border-radius:11px;background:#fbfcfe}.editor-line{padding:6px 0;border-bottom:1px solid #edf0f5;color:#58647a}.editor-line b{color:var(--blue)}.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.lane{padding:10px;border-radius:11px;background:#f2f4f8;min-height:220px}.lane h4{margin:3px 3px 10px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.doc{padding:12px;margin:7px 0;border:1px solid var(--line);border-radius:9px;background:#fff;box-shadow:0 3px 8px #1b2d5d08}.doc strong{display:block;font-size:12px}.doc small{color:var(--muted);font-size:11px}.proto-bar{position:fixed;z-index:20;bottom:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #435478;background:#17223c;color:#fff;border-radius:14px;box-shadow:0 13px 35px #07132955}.proto-bar button{width:30px;height:30px;border-radius:8px;background:#2a3b62;color:#fff;font-size:18px}.proto-label{min-width:150px;text-align:center;font-size:11px}.proto-label b{display:block;font-size:12px}.toast{position:fixed;right:22px;bottom:75px;z-index:30;padding:12px 15px;border-radius:10px;background:#17223c;color:#fff;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:none}@media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.content{padding:20px 15px}.g4,.g3,.g2,.split{grid-template-columns:1fr}.kanban{grid-template-columns:1fr 1fr}.top{padding:0 15px}.role{display:none}}@media(max-width:550px){.kanban{grid-template-columns:1fr}.title{font-size:25px}}
-</style>
-</head>
-<body>
-<div class="app" id="app"></div>
-<div class="toast" id="toast"></div>
-<div class="proto-bar"><button id="prev" aria-label="Previous variant">‹</button><div class="proto-label" id="variantLabel"></div><button id="next" aria-label="Next variant">›</button></div>
-<script>
-const variants=[
-  {key:'A',name:'Command Center'},
-  {key:'B',name:'Student Journey'},
-  {key:'C',name:'Content Studio'}
-];
-let current=Math.max(0,variants.findIndex(v=>v.key===new URLSearchParams(location.search).get('variant')));
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-function shell(side,body,role='Admin / Content team'){
- return `<header class="top"><div class="brand"><span class="logo">✦</span><div>MindBridge<small>EduOne AI layer</small></div></div><div class="top-right"><span class="role">${role}⌄</span><span class="avatar">${role[0]}</span></div></header><div class="layout"><aside class="side"><button class="nav active">⌂ Tổng quan</button><button class="nav">◉ Học viên</button><button class="nav">◌ Lộ trình AI</button><div class="side-label">Content Studio</div><button class="nav">▣ Thư viện học liệu</button><button class="nav">✦ Tạo với AI</button><button class="nav">✓ Chờ duyệt</button><div class="side-label">Hệ thống</div><button class="nav">⚙ Cài đặt</button></aside><main class="content">${body}</main></div>`;
-}
-function variantA(){return shell('',`<div class="kicker">Command Center</div><h1 class="title">Tổng quan EduOne MindBridge</h1><p class="subtitle">Theo dõi chất lượng học tập và hoạt động sản xuất học liệu.</p><div class="grid g4 section"><div class="card"><div class="metric">20</div><div class="metric-label">Học viên pilot</div><div class="trend">↑ 8% hoạt động tuần này</div></div><div class="card"><div class="metric">84%</div><div class="metric-label">Đề xuất được mở</div><div class="trend">↑ 12% so với tuần trước</div></div><div class="card"><div class="metric">18</div><div class="metric-label">Học liệu đã duyệt</div><div class="trend">+ 6 bản nháp đang chờ</div></div><div class="card"><div class="metric">−63%</div><div class="metric-label">Thời gian soạn nháp</div><div class="trend">AI + human review</div></div></div><div class="grid g2 section"><div class="card"><div class="section-head"><h2>Học viên cần chú ý</h2><button class="btn secondary small" onclick="toast('Mở danh sách 20 học viên')">Xem tất cả</button></div><table class="table"><thead><tr><th>Học viên</th><th>Kỹ năng</th><th>Đề xuất</th></tr></thead><tbody><tr><td><div class="student"><span class="avatar">A</span><div><div class="student-name">An Nguyễn</div><div class="student-meta">Lớp 6 · 2 ngày trước</div></div></div></td><td><span class="badge b-red">for-loop</span></td><td><span class="badge b-orange">Bổ trợ</span></td></tr><tr><td><div class="student"><span class="avatar">M</span><div><div class="student-name">Minh Trần</div><div class="student-meta">Lớp 7 · hôm nay</div></div></div></td><td><span class="badge b-orange">range()</span></td><td><span class="badge b-blue">Luyện tập</span></td></tr><tr><td><div class="student"><span class="avatar">L</span><div><div class="student-name">Linh Phạm</div><div class="student-meta">Lớp 7 · hôm nay</div></div></div></td><td><span class="badge b-green">Đã nắm</span></td><td><span class="badge b-green">Nâng cao</span></td></tr></tbody></table></div><div class="card"><div class="section-head"><h2>Recommendation gần đây</h2><span class="badge b-blue">Live log</span></div><div class="mini-list"><div class="recommend"><div class="rec-icon">↗</div><div><div class="rec-title">An → Ôn lại khái niệm lặp</div><div class="rec-reason">Điểm quiz 40% · sai 3/5 câu về for-loop</div></div></div><div class="recommend"><div class="rec-icon">↗</div><div><div class="rec-title">Linh → Bài tập lồng vòng lặp</div><div class="rec-reason">Điểm quiz 95% · hoàn thành nhanh hơn 30%</div></div></div><div class="recommend"><div class="rec-icon">↗</div><div><div class="rec-title">Minh → Luyện tập range()</div><div class="rec-reason">Sai chủ đề range · cần thêm 1 bài củng cố</div></div></div></div></div></div><div class="section card"><div class="section-head"><div><h2>Tiến độ khóa học Python cơ bản</h2><p class="muted">Chủ đề pilot: vòng lặp trong lập trình</p></div><span class="badge b-green">1 lớp · 20 học viên</span></div><div class="grid g3"><div><div class="metric-label">Hoàn thành khóa học</div><div class="metric">62%</div><div class="bar"><i style="width:62%"></i></div></div><div><div class="metric-label">Quiz trung bình</div><div class="metric">74%</div><div class="bar green"><i style="width:74%"></i></div></div><div><div class="metric-label">Học viên có đề xuất mới</div><div class="metric">11</div><div class="bar orange"><i style="width:55%"></i></div></div></div></div>`,'Admin / Content team')}
-function variantB(){return shell('',`<div class="hero-student"><span class="badge" style="background:#ffffff24;color:#dce5ff">LỘ TRÌNH CỦA BẠN</span><h2>Chào An, hôm nay học gì?</h2><p>Hệ thống đã tìm thấy một bài ngắn giúp bạn củng cố vòng lặp trước khi quay lại bài chính.</p><div style="margin-top:18px"><button class="btn" style="background:#fff;color:#244cc8" onclick="toast('Bắt đầu bài học: Ôn lại khái niệm lặp')">Bắt đầu bài học →</button></div></div><div class="grid g2 section"><div class="card dark-card"><div class="section-head"><div><h3 style="color:#fff">Tiến độ của bạn</h3><p class="muted">Python cơ bản · 4/8 bài</p></div><div class="ring"><b>52%</b></div></div><div style="margin-top:13px" class="grid g2"><div><div class="metric-label">Quiz gần nhất</div><strong>40%</strong></div><div><div class="metric-label">Thời gian học tuần này</div><strong>42 phút</strong></div></div></div><div class="card"><div class="section-head"><h3>Kỹ năng đang luyện</h3><span class="badge b-orange">Cần củng cố</span></div><div class="mini-list"><div><div style="display:flex;justify-content:space-between"><span>Vòng lặp for</span><b>40%</b></div><div class="bar orange"><i style="width:40%"></i></div></div><div><div style="display:flex;justify-content:space-between"><span>Biến</span><b>82%</b></div><div class="bar green"><i style="width:82%"></i></div></div><div><div style="display:flex;justify-content:space-between"><span>Điều kiện</span><b>70%</b></div><div class="bar"><i style="width:70%"></i></div></div></div></div></div><div class="section-head section"><div><h2>Đề xuất riêng cho bạn</h2><p class="subtitle">Dựa trên bài làm và tốc độ học gần đây</p></div><span class="badge b-blue">AI explanation</span></div><div class="grid g2"><div class="card"><div class="recommend"><div class="rec-icon">↺</div><div><span class="badge b-orange">Bài bổ trợ · 10 phút</span><div class="rec-title" style="margin-top:7px">Ôn lại khái niệm vòng lặp</div><div class="rec-reason">Bạn sai 3/5 câu về for-loop. Bài này sẽ giúp bạn hiểu cách một vòng lặp hoạt động qua ví dụ ngắn.</div><button class="btn small" style="margin-top:12px" onclick="toast('Đã chọn bài bổ trợ')">Học ngay</button></div></div></div><div class="card"><div class="recommend"><div class="rec-icon">◎</div><div><span class="badge b-blue">Bài luyện tập · 15 phút</span><div class="rec-title" style="margin-top:7px">Dùng range() trong for</div><div class="rec-reason">Sau khi hoàn thành bài bổ trợ, bạn sẽ luyện cách tạo dãy số trong vòng lặp.</div><button class="btn secondary small" style="margin-top:12px" onclick="toast('Bài này sẽ mở sau bài bổ trợ')">Xem trước</button></div></div></div></div><div class="grid g2 section"><div class="card"><div class="section-head"><h3>Hoạt động gần đây</h3><span class="muted">Tuần này</span></div><div class="timeline"><div class="event"><time>Hôm nay<br>09:20</time><span class="dot"></span><div class="event-text"><b>Hoàn thành quiz</b><br><span class="muted">Vòng lặp · 40%</span></div></div><div class="event"><time>Hôm qua<br>16:40</time><span class="dot"></span><div class="event-text"><b>Hoàn thành bài học</b><br><span class="muted">Điều kiện if/else</span></div></div><div class="event"><time>Thứ 2<br>15:10</time><span class="dot"></span><div class="event-text"><b>Nhận đề xuất mới</b><br><span class="muted">Ôn lại khái niệm vòng lặp</span></div></div></div></div><div class="card"><h3>Mục tiêu tuần này</h3><p class="muted">Hoàn thành 2 bài học và 1 quiz</p><div style="margin:20px 0 9px;display:flex;justify-content:space-between"><strong>1/3 hoàn thành</strong><span class="muted">33%</span></div><div class="bar"><i style="width:33%"></i></div><button class="btn secondary" style="margin-top:18px;width:100%" onclick="toast('Đã ghi nhận mục tiêu tuần')">Tiếp tục mục tiêu</button></div></div>`,'Học viên · An Nguyễn')}
-function variantC(){return shell('',`<div class="section-head"><div><div class="kicker">Content Studio</div><h1 class="title">Thư viện học liệu</h1><p class="subtitle">Tạo, kiểm duyệt và quản lý nội dung AI trước khi đến học viên.</p></div><button class="btn" onclick="toast('Mở form tạo học liệu bằng AI')">✦ Tạo với AI</button></div><div class="grid g4 section"><div class="card"><div class="metric">48</div><div class="metric-label">Tổng học liệu</div></div><div class="card"><div class="metric">06</div><div class="metric-label">Bản nháp AI</div><div class="trend" style="color:var(--orange)">Cần review</div></div><div class="card"><div class="metric">18</div><div class="metric-label">Đã approved</div><div class="trend">Sẵn sàng dùng</div></div><div class="card"><div class="metric">12m</div><div class="metric-label">Thời gian tạo draft</div><div class="trend">vs 40–50h thủ công</div></div></div><div class="card section"><div class="section-head"><div class="tabs"><button class="tab active" onclick="setTab(this)">Tất cả</button><button class="tab" onclick="setTab(this)">Chờ duyệt <span class="badge b-orange">6</span></button><button class="tab" onclick="setTab(this)">Đã xuất bản</button></div><button class="btn secondary small" onclick="toast('Bộ lọc: Python cơ bản')">⚙ Bộ lọc</button></div><div class="kanban"><div class="lane"><h4>Draft · 2</h4><div class="doc"><strong>Quiz: range() cơ bản</strong><small>AI draft · 5 câu hỏi</small><div style="margin-top:8px"><span class="badge b-blue">Python</span></div></div><div class="doc"><strong>Bài bổ trợ vòng lặp</strong><small>AI draft · 10 phút</small></div></div><div class="lane"><h4>In Review · 3</h4><div class="doc"><strong>Vòng lặp for — cơ bản</strong><small>Người tạo: AI · An sửa 2 câu</small><div style="margin-top:8px"><span class="badge b-orange">Review</span></div></div><div class="doc"><strong>Quiz tổng hợp</strong><small>5 câu · Lớp 7</small></div></div><div class="lane"><h4>Approved · 1</h4><div class="doc"><strong>Điều kiện if/else</strong><small>Đã duyệt bởi Admin</small><div style="margin-top:8px"><span class="badge b-green">Approved</span></div></div></div><div class="lane"><h4>Published · 18</h4><div class="doc"><strong>Biến và kiểu dữ liệu</strong><small>Đang dùng trong 1 lớp</small><div style="margin-top:8px"><span class="badge b-green">Published</span></div></div><div class="doc"><strong>Giới thiệu Python</strong><small>Đang dùng trong 1 lớp</small></div></div></div></div><div class="split section"><div class="card"><div class="section-head"><div><h2>Bản nháp đang review</h2><p class="muted">Vòng lặp for — cơ bản</p></div><span class="badge b-orange">In Review</span></div><div class="editor"><div class="editor-line"><b>Mục tiêu:</b> Học sinh hiểu cách lặp qua các phần tử.</div><div class="editor-line"><b>Giải thích:</b> Vòng lặp for thực hiện cùng một thao tác...</div><div class="editor-line"><b>Câu hỏi 1:</b> Đoạn code sau in ra kết quả nào?</div><div class="editor-line"><b>Đáp án:</b> 0, 1, 2</div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:13px"><button class="btn secondary small" onclick="toast('Bản nháp đã được lưu')">Lưu chỉnh sửa</button><button class="btn green small" onclick="toast('Đã approve — nội dung sẵn sàng publish')">✓ Approve</button></div></div><div class="card"><h3>Metadata & explainability</h3><div class="mini-list"><div class="mini-item"><span class="muted">Khối lớp</span><strong>6–8</strong></div><div class="mini-item"><span class="muted">Kỹ năng</span><strong>for-loop, range</strong></div><div class="mini-item"><span class="muted">Prerequisites</span><strong>Biến, danh sách</strong></div><div class="mini-item"><span class="muted">Độ khó</span><span class="badge b-blue">Cơ bản</span></div><div class="mini-item"><span class="muted">Nguồn tạo</span><span class="badge b-orange">AI draft</span></div></div></div></div>`,'Admin / Content team')}
-function render(){document.getElementById('app').innerHTML=[variantA,variantB,variantC][current]();document.getElementById('variantLabel').innerHTML=`<b>${variants[current].key} · ${variants[current].name}</b><span>Prototype — dùng phím ← →</span>`;history.replaceState(null,'',`?variant=${variants[current].key}`)}
-function move(dir){current=(current+dir+variants.length)%variants.length;render()}
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove('show'),2200)}
-function setTab(el){el.parentElement.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');toast('Đã đổi bộ lọc nội dung')}
-document.getElementById('prev').onclick=()=>move(-1);document.getElementById('next').onclick=()=>move(1);document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1)});render();
-</script>
-</body></html>
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width,initial-scale=1" name="viewport">
+    <title>EduOne MindBridge — UI Prototype</title>
+    <style>
+    :root {
+      --ink: #172033;
+      --muted: #68738a;
+      --line: #e5eaf2;
+      --bg: #f4f6fa;
+      --surface: #fff;
+      --blue: #315efb;
+      --blue2: #eaf0ff;
+      --green: #0d8a67;
+      --green2: #e7f8f1;
+      --orange: #b86b14;
+      --orange2: #fff4e3;
+      --red: #b43e4c;
+      --shadow: 0 14px 36px #1b2d5d12;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font:
+        14px / 1.5 Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 0;
+    }
+    .app {
+      max-width: 1440px;
+      min-height: 100vh;
+      margin: auto;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+      padding: 0 28px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      font-size: 18px;
+      font-weight: 850;
+    }
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 35px;
+      height: 35px;
+      font-size: 18px;
+      color: #fff;
+      background: linear-gradient(135deg, #315efb, #6c8cff);
+      border-radius: 11px;
+    }
+    .brand small {
+      display: block;
+      font-size: 10px;
+      font-weight: 650;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .top-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .role {
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      font-weight: 800;
+      color: var(--blue);
+      background: #dfe7ff;
+      border-radius: 50%;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      min-height: calc(100vh - 70px);
+    }
+    .side {
+      padding: 23px 14px;
+      background: #fff;
+      border-right: 1px solid var(--line);
+    }
+    .side-label {
+      margin: 13px 12px 7px;
+      font-size: 10px;
+      font-weight: 800;
+      color: #9aa3b4;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .nav {
+      width: 100%;
+      padding: 11px 12px;
+      margin: 2px 0;
+      color: var(--muted);
+      text-align: left;
+      background: transparent;
+      border-radius: 9px;
+    }
+    .nav:hover,
+    .nav.active {
+      font-weight: 750;
+      color: var(--blue);
+      background: var(--blue2);
+    }
+    .content {
+      width: 100%;
+      max-width: 1200px;
+      padding: 30px;
+      margin: auto;
+    }
+    .kicker {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .title {
+      margin: 5px 0 4px;
+      font-size: 30px;
+      letter-spacing: -0.04em;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      gap: 15px;
+    }
+    .g2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .g3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .g4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .card {
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      box-shadow: var(--shadow);
+    }
+    .card h3 {
+      margin: 0 0 5px;
+      font-size: 16px;
+    }
+    .metric {
+      font-size: 29px;
+      font-weight: 850;
+      letter-spacing: -0.04em;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .trend {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--green);
+    }
+    .section {
+      margin-top: 24px;
+    }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: -0.02em;
+    }
+    .btn {
+      padding: 10px 14px;
+      font-weight: 750;
+      color: #fff;
+      background: var(--blue);
+      border-radius: 9px;
+    }
+    .btn.secondary {
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .btn.green {
+      background: var(--green);
+    }
+    .btn.small {
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 6px;
+    }
+    .b-blue {
+      color: var(--blue);
+      background: var(--blue2);
+    }
+    .b-green {
+      color: var(--green);
+      background: var(--green2);
+    }
+    .b-orange {
+      color: var(--orange);
+      background: var(--orange2);
+    }
+    .b-red {
+      color: var(--red);
+      background: #fff0f2;
+    }
+    .bar {
+      height: 8px;
+      overflow: hidden;
+      background: #edf0f6;
+      border-radius: 99px;
+    }
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--blue);
+      border-radius: inherit;
+    }
+    .bar.green i {
+      background: var(--green);
+    }
+    .bar.orange i {
+      background: #e6a342;
+    }
+    .student {
+      display: flex;
+      gap: 11px;
+      align-items: center;
+    }
+    .student .avatar {
+      width: 38px;
+      height: 38px;
+    }
+    .student-name {
+      font-weight: 780;
+    }
+    .student-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .table th,
+    .table td {
+      padding: 13px 8px;
+      vertical-align: middle;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+    .table th {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .table tr:last-child td {
+      border: 0;
+    }
+    .recommend {
+      display: flex;
+      gap: 13px;
+      align-items: flex-start;
+      padding: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .rec-icon {
+      display: grid;
+      flex: 0 0 36px;
+      place-items: center;
+      height: 36px;
+      font-size: 17px;
+      color: var(--blue);
+      background: var(--blue2);
+      border-radius: 10px;
+    }
+    .rec-title {
+      font-weight: 780;
+    }
+    .rec-reason {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .timeline {
+      display: grid;
+      gap: 0;
+    }
+    .event {
+      display: grid;
+      grid-template-columns: 70px 18px 1fr;
+      gap: 8px;
+      min-height: 58px;
+    }
+    .event time {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .dot {
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+    .dot:before {
+      z-index: 1;
+      width: 10px;
+      height: 10px;
+      margin-top: 4px;
+      content: "";
+      background: var(--blue);
+      border-radius: 50%;
+    }
+    .dot:after {
+      position: absolute;
+      top: 14px;
+      bottom: 0;
+      width: 1px;
+      content: "";
+      background: #dce2ee;
+    }
+    .event:last-child .dot:after {
+      display: none;
+    }
+    .event-text {
+      font-size: 12px;
+    }
+    .mini-list {
+      display: grid;
+      gap: 10px;
+    }
+    .mini-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .mini-item:last-child {
+      border: 0;
+    }
+    .icon-square {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      background: var(--blue2);
+      border-radius: 10px;
+    }
+    .content-row {
+      display: flex;
+      gap: 13px;
+      align-items: center;
+    }
+    .content-row .info {
+      flex: 1;
+    }
+    .content-row strong {
+      display: block;
+    }
+    .content-row small {
+      color: var(--muted);
+    }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 4px;
+      background: #eef1f7;
+      border-radius: 11px;
+    }
+    .tab {
+      padding: 8px 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: transparent;
+      border-radius: 8px;
+    }
+    .tab.active {
+      color: var(--blue);
+      background: #fff;
+      box-shadow: 0 2px 7px #26355a14;
+    }
+    .hero-student {
+      padding: 26px;
+      color: #fff;
+      background: linear-gradient(125deg, #14264e, #315efb);
+      border-radius: 17px;
+    }
+    .hero-student h2 {
+      margin: 3px 0 6px;
+      font-size: 25px;
+    }
+    .hero-student p {
+      margin: 0;
+      color: #dbe4ff;
+    }
+    .dark-card {
+      color: #fff;
+      background: #1d2b4d;
+      border: 0;
+    }
+    .dark-card .muted {
+      color: #bdc9e7;
+    }
+    .ring {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 100px;
+      height: 100px;
+      background: conic-gradient(#72d4b1 0 72%, #324566 72%);
+      border-radius: 50%;
+    }
+    .ring:after {
+      position: absolute;
+      inset: 10px;
+      content: "";
+      background: #1d2b4d;
+      border-radius: 50%;
+    }
+    .ring b {
+      position: relative;
+      z-index: 1;
+      font-size: 22px;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 15px;
+    }
+    .editor {
+      min-height: 190px;
+      padding: 17px;
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+    }
+    .editor-line {
+      padding: 6px 0;
+      color: #58647a;
+      border-bottom: 1px solid #edf0f5;
+    }
+    .editor-line b {
+      color: var(--blue);
+    }
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .lane {
+      min-height: 220px;
+      padding: 10px;
+      background: #f2f4f8;
+      border-radius: 11px;
+    }
+    .lane h4 {
+      margin: 3px 3px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .doc {
+      padding: 12px;
+      margin: 7px 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      box-shadow: 0 3px 8px #1b2d5d08;
+    }
+    .doc strong {
+      display: block;
+      font-size: 12px;
+    }
+    .doc small {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .proto-bar {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 9px;
+      color: #fff;
+      background: #17223c;
+      border: 1px solid #435478;
+      border-radius: 14px;
+      box-shadow: 0 13px 35px #07132955;
+      transform: translateX(-50%);
+    }
+    .proto-bar button {
+      width: 30px;
+      height: 30px;
+      font-size: 18px;
+      color: #fff;
+      background: #2a3b62;
+      border-radius: 8px;
+    }
+    .proto-label {
+      min-width: 150px;
+      font-size: 11px;
+      text-align: center;
+    }
+    .proto-label b {
+      display: block;
+      font-size: 12px;
+    }
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 75px;
+      z-index: 30;
+      padding: 12px 15px;
+      color: #fff;
+      pointer-events: none;
+      background: #17223c;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: 0.2s;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: none;
+    }
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .side {
+        display: none;
+      }
+      .content {
+        padding: 20px 15px;
+      }
+      .g4,
+      .g3,
+      .g2,
+      .split {
+        grid-template-columns: 1fr;
+      }
+      .kanban {
+        grid-template-columns: 1fr 1fr;
+      }
+      .top {
+        padding: 0 15px;
+      }
+      .role {
+        display: none;
+      }
+    }
+    @media (max-width: 550px) {
+      .kanban {
+        grid-template-columns: 1fr;
+      }
+      .title {
+        font-size: 25px;
+      }
+    }
+    </style>
+  </head>
+  <body>
+    <div class="app" id="app"></div>
+    <div class="toast" id="toast"></div>
+    <div class="proto-bar">
+      <button aria-label="Previous variant" id="prev">‹</button>
+      <div class="proto-label" id="variantLabel"></div>
+      <button aria-label="Next variant" id="next">›</button>
+    </div>
+    <script>
+    "use strict";
+    const variants = [
+      { key: "A", name: "Command Center" },
+      { key: "B", name: "Student Journey" },
+      { key: "C", name: "Content Studio" },
+    ];
+    let current = Math.max(
+      0,
+      variants.findIndex(
+        (v) => v.key === new URLSearchParams(location.search).get("variant")
+      )
+    );
+    const _esc = (s) =>
+      String(s).replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "'": "&#039;",
+            '"': "&quot;",
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+          })[c]
+      );
+    function shell(_side, body, role = "Admin / Content team") {
+      return `<header class="top"><div class="brand"><span class="logo">✦</span><div>MindBridge<small>EduOne AI layer</small></div></div><div class="top-right"><span class="role">${role}⌄</span><span class="avatar">${role[0]}</span></div></header><div class="layout"><aside class="side"><button class="nav active">⌂ Tổng quan</button><button class="nav">◉ Học viên</button><button class="nav">◌ Lộ trình AI</button><div class="side-label">Content Studio</div><button class="nav">▣ Thư viện học liệu</button><button class="nav">✦ Tạo với AI</button><button class="nav">✓ Chờ duyệt</button><div class="side-label">Hệ thống</div><button class="nav">⚙ Cài đặt</button></aside><main class="content">${body}</main></div>`;
+    }
+    function variantA() {
+      return shell(
+        "",
+        `<div class="kicker">Command Center</div><h1 class="title">Tổng quan EduOne MindBridge</h1><p class="subtitle">Theo dõi chất lượng học tập và hoạt động sản xuất học liệu.</p><div class="grid g4 section"><div class="card"><div class="metric">20</div><div class="metric-label">Học viên pilot</div><div class="trend">↑ 8% hoạt động tuần này</div></div><div class="card"><div class="metric">84%</div><div class="metric-label">Đề xuất được mở</div><div class="trend">↑ 12% so với tuần trước</div></div><div class="card"><div class="metric">18</div><div class="metric-label">Học liệu đã duyệt</div><div class="trend">+ 6 bản nháp đang chờ</div></div><div class="card"><div class="metric">−63%</div><div class="metric-label">Thời gian soạn nháp</div><div class="trend">AI + human review</div></div></div><div class="grid g2 section"><div class="card"><div class="section-head"><h2>Học viên cần chú ý</h2><button class="btn secondary small" onclick="toast('Mở danh sách 20 học viên')">Xem tất cả</button></div><table class="table"><thead><tr><th>Học viên</th><th>Kỹ năng</th><th>Đề xuất</th></tr></thead><tbody><tr><td><div class="student"><span class="avatar">A</span><div><div class="student-name">An Nguyễn</div><div class="student-meta">Lớp 6 · 2 ngày trước</div></div></div></td><td><span class="badge b-red">for-loop</span></td><td><span class="badge b-orange">Bổ trợ</span></td></tr><tr><td><div class="student"><span class="avatar">M</span><div><div class="student-name">Minh Trần</div><div class="student-meta">Lớp 7 · hôm nay</div></div></div></td><td><span class="badge b-orange">range()</span></td><td><span class="badge b-blue">Luyện tập</span></td></tr><tr><td><div class="student"><span class="avatar">L</span><div><div class="student-name">Linh Phạm</div><div class="student-meta">Lớp 7 · hôm nay</div></div></div></td><td><span class="badge b-green">Đã nắm</span></td><td><span class="badge b-green">Nâng cao</span></td></tr></tbody></table></div><div class="card"><div class="section-head"><h2>Recommendation gần đây</h2><span class="badge b-blue">Live log</span></div><div class="mini-list"><div class="recommend"><div class="rec-icon">↗</div><div><div class="rec-title">An → Ôn lại khái niệm lặp</div><div class="rec-reason">Điểm quiz 40% · sai 3/5 câu về for-loop</div></div></div><div class="recommend"><div class="rec-icon">↗</div><div><div class="rec-title">Linh → Bài tập lồng vòng lặp</div><div class="rec-reason">Điểm quiz 95% · hoàn thành nhanh hơn 30%</div></div></div><div class="recommend"><div class="rec-icon">↗</div><div><div class="rec-title">Minh → Luyện tập range()</div><div class="rec-reason">Sai chủ đề range · cần thêm 1 bài củng cố</div></div></div></div></div></div><div class="section card"><div class="section-head"><div><h2>Tiến độ khóa học Python cơ bản</h2><p class="muted">Chủ đề pilot: vòng lặp trong lập trình</p></div><span class="badge b-green">1 lớp · 20 học viên</span></div><div class="grid g3"><div><div class="metric-label">Hoàn thành khóa học</div><div class="metric">62%</div><div class="bar"><i style="width:62%"></i></div></div><div><div class="metric-label">Quiz trung bình</div><div class="metric">74%</div><div class="bar green"><i style="width:74%"></i></div></div><div><div class="metric-label">Học viên có đề xuất mới</div><div class="metric">11</div><div class="bar orange"><i style="width:55%"></i></div></div></div></div>`,
+        "Admin / Content team"
+      );
+    }
+    function variantB() {
+      return shell(
+        "",
+        `<div class="hero-student"><span class="badge" style="background:#ffffff24;color:#dce5ff">LỘ TRÌNH CỦA BẠN</span><h2>Chào An, hôm nay học gì?</h2><p>Hệ thống đã tìm thấy một bài ngắn giúp bạn củng cố vòng lặp trước khi quay lại bài chính.</p><div style="margin-top:18px"><button class="btn" style="background:#fff;color:#244cc8" onclick="toast('Bắt đầu bài học: Ôn lại khái niệm lặp')">Bắt đầu bài học →</button></div></div><div class="grid g2 section"><div class="card dark-card"><div class="section-head"><div><h3 style="color:#fff">Tiến độ của bạn</h3><p class="muted">Python cơ bản · 4/8 bài</p></div><div class="ring"><b>52%</b></div></div><div style="margin-top:13px" class="grid g2"><div><div class="metric-label">Quiz gần nhất</div><strong>40%</strong></div><div><div class="metric-label">Thời gian học tuần này</div><strong>42 phút</strong></div></div></div><div class="card"><div class="section-head"><h3>Kỹ năng đang luyện</h3><span class="badge b-orange">Cần củng cố</span></div><div class="mini-list"><div><div style="display:flex;justify-content:space-between"><span>Vòng lặp for</span><b>40%</b></div><div class="bar orange"><i style="width:40%"></i></div></div><div><div style="display:flex;justify-content:space-between"><span>Biến</span><b>82%</b></div><div class="bar green"><i style="width:82%"></i></div></div><div><div style="display:flex;justify-content:space-between"><span>Điều kiện</span><b>70%</b></div><div class="bar"><i style="width:70%"></i></div></div></div></div></div><div class="section-head section"><div><h2>Đề xuất riêng cho bạn</h2><p class="subtitle">Dựa trên bài làm và tốc độ học gần đây</p></div><span class="badge b-blue">AI explanation</span></div><div class="grid g2"><div class="card"><div class="recommend"><div class="rec-icon">↺</div><div><span class="badge b-orange">Bài bổ trợ · 10 phút</span><div class="rec-title" style="margin-top:7px">Ôn lại khái niệm vòng lặp</div><div class="rec-reason">Bạn sai 3/5 câu về for-loop. Bài này sẽ giúp bạn hiểu cách một vòng lặp hoạt động qua ví dụ ngắn.</div><button class="btn small" style="margin-top:12px" onclick="toast('Đã chọn bài bổ trợ')">Học ngay</button></div></div></div><div class="card"><div class="recommend"><div class="rec-icon">◎</div><div><span class="badge b-blue">Bài luyện tập · 15 phút</span><div class="rec-title" style="margin-top:7px">Dùng range() trong for</div><div class="rec-reason">Sau khi hoàn thành bài bổ trợ, bạn sẽ luyện cách tạo dãy số trong vòng lặp.</div><button class="btn secondary small" style="margin-top:12px" onclick="toast('Bài này sẽ mở sau bài bổ trợ')">Xem trước</button></div></div></div></div><div class="grid g2 section"><div class="card"><div class="section-head"><h3>Hoạt động gần đây</h3><span class="muted">Tuần này</span></div><div class="timeline"><div class="event"><time>Hôm nay<br>09:20</time><span class="dot"></span><div class="event-text"><b>Hoàn thành quiz</b><br><span class="muted">Vòng lặp · 40%</span></div></div><div class="event"><time>Hôm qua<br>16:40</time><span class="dot"></span><div class="event-text"><b>Hoàn thành bài học</b><br><span class="muted">Điều kiện if/else</span></div></div><div class="event"><time>Thứ 2<br>15:10</time><span class="dot"></span><div class="event-text"><b>Nhận đề xuất mới</b><br><span class="muted">Ôn lại khái niệm vòng lặp</span></div></div></div></div><div class="card"><h3>Mục tiêu tuần này</h3><p class="muted">Hoàn thành 2 bài học và 1 quiz</p><div style="margin:20px 0 9px;display:flex;justify-content:space-between"><strong>1/3 hoàn thành</strong><span class="muted">33%</span></div><div class="bar"><i style="width:33%"></i></div><button class="btn secondary" style="margin-top:18px;width:100%" onclick="toast('Đã ghi nhận mục tiêu tuần')">Tiếp tục mục tiêu</button></div></div>`,
+        "Học viên · An Nguyễn"
+      );
+    }
+    function variantC() {
+      return shell(
+        "",
+        `<div class="section-head"><div><div class="kicker">Content Studio</div><h1 class="title">Thư viện học liệu</h1><p class="subtitle">Tạo, kiểm duyệt và quản lý nội dung AI trước khi đến học viên.</p></div><button class="btn" onclick="toast('Mở form tạo học liệu bằng AI')">✦ Tạo với AI</button></div><div class="grid g4 section"><div class="card"><div class="metric">48</div><div class="metric-label">Tổng học liệu</div></div><div class="card"><div class="metric">06</div><div class="metric-label">Bản nháp AI</div><div class="trend" style="color:var(--orange)">Cần review</div></div><div class="card"><div class="metric">18</div><div class="metric-label">Đã approved</div><div class="trend">Sẵn sàng dùng</div></div><div class="card"><div class="metric">12m</div><div class="metric-label">Thời gian tạo draft</div><div class="trend">vs 40–50h thủ công</div></div></div><div class="card section"><div class="section-head"><div class="tabs"><button class="tab active" onclick="setTab(this)">Tất cả</button><button class="tab" onclick="setTab(this)">Chờ duyệt <span class="badge b-orange">6</span></button><button class="tab" onclick="setTab(this)">Đã xuất bản</button></div><button class="btn secondary small" onclick="toast('Bộ lọc: Python cơ bản')">⚙ Bộ lọc</button></div><div class="kanban"><div class="lane"><h4>Draft · 2</h4><div class="doc"><strong>Quiz: range() cơ bản</strong><small>AI draft · 5 câu hỏi</small><div style="margin-top:8px"><span class="badge b-blue">Python</span></div></div><div class="doc"><strong>Bài bổ trợ vòng lặp</strong><small>AI draft · 10 phút</small></div></div><div class="lane"><h4>In Review · 3</h4><div class="doc"><strong>Vòng lặp for — cơ bản</strong><small>Người tạo: AI · An sửa 2 câu</small><div style="margin-top:8px"><span class="badge b-orange">Review</span></div></div><div class="doc"><strong>Quiz tổng hợp</strong><small>5 câu · Lớp 7</small></div></div><div class="lane"><h4>Approved · 1</h4><div class="doc"><strong>Điều kiện if/else</strong><small>Đã duyệt bởi Admin</small><div style="margin-top:8px"><span class="badge b-green">Approved</span></div></div></div><div class="lane"><h4>Published · 18</h4><div class="doc"><strong>Biến và kiểu dữ liệu</strong><small>Đang dùng trong 1 lớp</small><div style="margin-top:8px"><span class="badge b-green">Published</span></div></div><div class="doc"><strong>Giới thiệu Python</strong><small>Đang dùng trong 1 lớp</small></div></div></div></div><div class="split section"><div class="card"><div class="section-head"><div><h2>Bản nháp đang review</h2><p class="muted">Vòng lặp for — cơ bản</p></div><span class="badge b-orange">In Review</span></div><div class="editor"><div class="editor-line"><b>Mục tiêu:</b> Học sinh hiểu cách lặp qua các phần tử.</div><div class="editor-line"><b>Giải thích:</b> Vòng lặp for thực hiện cùng một thao tác...</div><div class="editor-line"><b>Câu hỏi 1:</b> Đoạn code sau in ra kết quả nào?</div><div class="editor-line"><b>Đáp án:</b> 0, 1, 2</div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:13px"><button class="btn secondary small" onclick="toast('Bản nháp đã được lưu')">Lưu chỉnh sửa</button><button class="btn green small" onclick="toast('Đã approve — nội dung sẵn sàng publish')">✓ Approve</button></div></div><div class="card"><h3>Metadata & explainability</h3><div class="mini-list"><div class="mini-item"><span class="muted">Khối lớp</span><strong>6–8</strong></div><div class="mini-item"><span class="muted">Kỹ năng</span><strong>for-loop, range</strong></div><div class="mini-item"><span class="muted">Prerequisites</span><strong>Biến, danh sách</strong></div><div class="mini-item"><span class="muted">Độ khó</span><span class="badge b-blue">Cơ bản</span></div><div class="mini-item"><span class="muted">Nguồn tạo</span><span class="badge b-orange">AI draft</span></div></div></div></div>`,
+        "Admin / Content team"
+      );
+    }
+    function render() {
+      document.getElementById("app").innerHTML = [variantA, variantB, variantC][
+        current
+      ]();
+      document.getElementById("variantLabel").innerHTML =
+        `<b>${variants[current].key} · ${variants[current].name}</b><span>Prototype — dùng phím ← →</span>`;
+      history.replaceState(null, "", `?variant=${variants[current].key}`);
+    }
+    function move(dir) {
+      current = (current + dir + variants.length) % variants.length;
+      render();
+    }
+    function toast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(window.__toast);
+      window.__toast = setTimeout(() => t.classList.remove("show"), 2200);
+    }
+    function _setTab(el) {
+      el.parentElement
+        .querySelectorAll(".tab")
+        .forEach((x) => x.classList.remove("active"));
+      el.classList.add("active");
+      toast("Đã đổi bộ lọc nội dung");
+    }
+    document.getElementById("prev").onclick = () => move(-1);
+    document.getElementById("next").onclick = () => move(1);
+    document.addEventListener("keydown", (e) => {
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        move(-1);
+      }
+      if (e.key === "ArrowRight") {
+        move(1);
+      }
+    });
+    render();
+    </script>
+  </body>
+</html>

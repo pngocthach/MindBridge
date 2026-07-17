@@ -1,18 +1,541 @@
 <!doctype html>
 <html lang="vi">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MindBridge × EduOne — UI Preview</title>
-<style>
-:root{--ink:#171826;--muted:#6f7182;--line:#ece9f4;--purple:#7136ea;--cyan:#42c6dd;--pink:#f8eefe;--panel:#fff;--bg:#f7f4ff}*{box-sizing:border-box}body{margin:0;color:var(--ink);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(120deg,#f7f6ff,#fff7fb 60%,#effbff)}button{font:inherit;cursor:pointer;border:0}.app{display:grid;grid-template-columns:88px 260px 1fr;min-height:100vh}.rail{display:flex;align-items:center;flex-direction:column;border-right:1px solid #e6e2ef;background:#fff;padding:28px 0;gap:30px}.logo{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#6751ff,#261de2);color:#fff;font-size:30px;font-weight:800}.rail-btn{font-size:22px;color:#7d8191;background:none}.rail-btn.active{color:#4027e8}.user{margin-top:auto;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#c887f4;color:#fff;font-weight:800}.course-side{padding:30px 20px;border-right:1px solid #eee9f4;background:rgba(255,255,255,.68)}.cover{height:160px;border-radius:12px;background:linear-gradient(135deg,#cdd8ff,#fff1fc);display:grid;place-items:center;position:relative;overflow:hidden}.cover:after{content:'✦';font-size:78px;color:#4031db;text-shadow:8px 8px #8c92ff}.timer{position:absolute;bottom:0;left:0;right:0;padding:8px 11px;background:#8055c9d9;color:#fff;display:flex;justify-content:space-between}.course-title{font-size:16px;font-weight:750;margin:14px 0 7px}.muted{color:var(--muted)}.progress-label{display:flex;justify-content:space-between;font-size:12px}.progress{height:7px;border-radius:99px;background:#eeeaf9;margin:5px 0 17px}.progress i{display:block;width:8%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#3bc4dd,#7c41ef)}.goal{padding:14px;border-radius:10px;background:#fff2ff;margin-bottom:16px}.goal strong{display:block;margin-bottom:6px}.side-nav{display:grid;gap:3px}.side-nav button{padding:11px 12px;background:transparent;color:#434353;text-align:left;border-radius:8px}.side-nav button.active{background:#eee6ff;color:#6840d8;font-weight:700}.side-label{font-size:11px;color:#a09eae;text-transform:uppercase;letter-spacing:.07em;margin:13px 12px 4px}.main{padding:34px 40px 60px;max-width:1200px;width:100%;margin:auto}.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.flow-tabs{display:flex;gap:7px;overflow:auto}.flow-tabs button{padding:8px 12px;border-radius:8px;background:#fff;color:#77768a;border:1px solid #ebe8f2}.flow-tabs button.active{background:#7040de;color:#fff;border-color:#7040de}.hero{min-height:360px;padding:38px 38px 28px;border-radius:22px;background:linear-gradient(125deg,#f0edff,#ffedf8 57%,#effcff);position:relative;overflow:hidden}.hero:after{content:'✦';position:absolute;right:8%;top:12%;font-size:210px;color:#737df3aa}.eyebrow{color:#7745d7;font-weight:800;font-size:12px}.hero h1{position:relative;z-index:1;max-width:620px;font-size:38px;line-height:1.13;letter-spacing:-.04em;margin:10px 0}.hero p{position:relative;z-index:1;color:#656477;font-size:16px}.meta{position:relative;z-index:1;display:flex;gap:40px;margin:22px 0}.meta b{display:block;color:#6c35da;font-size:17px}.primary{position:relative;z-index:1;padding:14px 25px;border-radius:30px;background:#7335ea;color:#fff;font-weight:800;box-shadow:0 10px 20px #7435ea33}.section-title{display:flex;align-items:center;gap:9px;font-size:17px;margin:25px 0 13px}.spark{color:#28bbd5}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{padding:20px;border:1px solid #eee8f3;border-radius:16px;background:#fff9ffcc}.card .ico{font-size:25px}.card h3{font-size:15px;margin:13px 0 5px}.card p{color:var(--muted);margin:0;font-size:12px}.content-title{display:flex;gap:8px;align-items:center;font-size:19px;margin-bottom:15px}.accordion{padding:18px 24px;border-radius:17px;background:#ffffffd9;border:1px solid #eeeaf3;margin:12px 0}.accordion-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer}.accordion-head strong{font-size:17px}.lessons{display:none;margin:17px 0 0 22px}.accordion.open .lessons{display:grid;gap:10px}.lesson{display:flex;gap:11px;align-items:center;color:#4f5060}.lesson.done{color:#18a998}.lesson.locked{color:#aaa}.lesson button{background:none;color:inherit;text-align:left}.lesson-icon{font-size:17px}.mind-panel{display:none;margin-top:14px;padding:18px;border:1px solid #ded2ff;border-radius:15px;background:linear-gradient(135deg,#f5efff,#fff)}.mind-panel.show{display:block}.recommendation{padding:14px;border-radius:11px;background:#fff;border:1px solid #e7ddfb}.recommendation strong{display:block;margin-bottom:5px}.explain{margin-top:9px;padding:10px;border-left:3px solid #7040de;background:#f3edff;color:#514579;font-size:12px}.admin-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}.admin-card{padding:20px;border-radius:16px;background:#fff;border:1px solid #ebe6f2}.status{display:inline-block;padding:4px 8px;border-radius:6px;background:#fff0dd;color:#b46710;font-size:11px;font-weight:800}.doc{padding:12px;margin:8px 0;border:1px solid #eeeaf2;border-radius:10px;background:#fff}.doc small{display:block;color:var(--muted)}.teacher-row{display:grid;grid-template-columns:1fr 100px 120px;gap:10px;padding:12px 0;border-bottom:1px solid #eeeaf3;align-items:center}.toast{position:fixed;right:22px;bottom:24px;padding:12px 15px;border-radius:10px;background:#20213b;color:#fff;opacity:0;transform:translateY(8px);transition:.2s}.toast.show{opacity:1;transform:none}@media(max-width:1100px){.app{grid-template-columns:70px 230px 1fr}.main{padding:24px}.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:750px){.app{display:block}.rail{height:60px;flex-direction:row;padding:10px 15px;gap:18px}.rail .user{margin:0 0 0 auto}.course-side{display:none}.main{padding:17px}.hero h1{font-size:29px}.meta{gap:20px}.admin-grid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}}
-</style>
-</head>
-<body><div class="app"><aside class="rail"><div class="logo">e</div><button class="rail-btn active">⌂</button><button class="rail-btn">▣</button><button class="rail-btn">◉</button><div class="user">V</div></aside><aside class="course-side"><div class="cover"><div class="timer">⏰ Thời gian học <b>04:05</b></div></div><div class="course-title">Nhà báo 4.0: Làm chủ nội dung trong kỷ nguyên AI</div><p class="muted">Hết hạn: 14/08/2026, 14:04</p><div class="progress-label"><span>Tiến độ</span><b>5%</b></div><div class="progress"><i></i></div><div class="goal"><strong>Hoàn thành 1/4 mục tiêu</strong><span>◉ ◉ <b style="color:#31bed3">◉</b> ◉</span></div><nav class="side-nav"><button class="active" onclick="courseHome()">Trang chủ khoá học</button><button>Phiên học trực tuyến</button><div class="side-label">Nội dung</div><button onclick="contentView()">Giới thiệu chung về khoá học　›</button><button onclick="contentView()">Khảo sát. Khảo sát trước khoá　›</button><button onclick="contentView()">Bài 1. SỨC MẠNH CỦA GENAI　›</button></nav></aside><main class="main" id="main"></main></div><div class="toast" id="toast"></div>
-<script>
-const toast=m=>{let t=document.querySelector('.toast');t.textContent=m;t.classList.add('show');clearTimeout(window._t);window._t=setTimeout(()=>t.classList.remove('show'),2200)};
-function courseHome(){document.getElementById('main').innerHTML=`<div class="toolbar"><div class="flow-tabs"><button class="active" onclick="courseHome()">Học viên</button><button onclick="teacherView()">Giáo viên</button><button onclick="adminView()">Admin / Content Studio</button></div><span class="muted">✦ MindBridge enabled</span></div><section class="hero"><div class="eyebrow">✦ Tạo ra bởi AI · MindBridge</div><h1>Nhà báo 4.0: Làm chủ nội dung trong kỷ nguyên AI</h1><p>AI for Impact</p><div class="meta"><div>Khối lượng<b>5 bài học</b></div><div>Thời lượng<b>4 tuần</b></div></div><button class="primary" onclick="toast('Tiếp tục bài học 1.1')">Tiếp tục học ↗</button></section><div class="section-title"><span class="spark">✎</span><b>Giới thiệu khoá học</b></div><div class="cards"><div class="card"><div class="ico">🛡️</div><h3>Hiểu đúng & dùng AI an toàn</h3><p>Nắm các khái niệm và nguyên tắc cơ bản.</p></div><div class="card"><div class="ico">🎯</div><h3>Làm chủ kỹ năng đặt câu lệnh</h3><p>Thực hành prompt theo mục tiêu.</p></div><div class="card"><div class="ico">▣</div><h3>Xử lý đa phương tiện</h3><p>Hình ảnh, âm thanh và tài liệu.</p></div><div class="card"><div class="ico">👥</div><h3>Phân tích và tổng hợp</h3><p>Đọc, kiểm chứng và tạo nội dung.</p></div></div><div class="section-title"><span class="spark">✦</span><b>MindBridge đề xuất cho bạn</b></div><button class="primary" onclick="toggleMind()" style="padding:10px 17px;font-size:12px">Xem lộ trình AI của tôi</button><div class="mind-panel" id="mind"><div class="recommendation"><strong>Ôn lại: Kỹ năng đặt câu lệnh cơ bản · 12 phút</strong><span class="muted">Bài bổ trợ trước khi tiếp tục bài 1.1</span><div class="explain"><b>Vì sao được đề xuất?</b><br>Bạn chưa hoàn thành khảo sát đầu vào và đang ở mức tiến độ 5%. Bài này giúp xác định mức độ phù hợp trước khi mở nội dung tiếp theo.</div><button class="primary" style="margin-top:12px;padding:9px 14px;font-size:12px" onclick="toast('Đã mở bài bổ trợ')">Bắt đầu bài bổ trợ</button></div></div>`}
-function toggleMind(){document.getElementById('mind').classList.toggle('show')}
-function contentView(){document.getElementById('main').innerHTML=`<div class="toolbar"><div class="content-title">▣ <b>Nội dung khoá học</b></div><span class="muted">MindBridge theo dõi tiến độ</span></div><div class="accordion open"><div class="accordion-head" onclick="this.parentElement.classList.toggle('open')"><strong>ⓘ　Giới thiệu chung về khoá học</strong><span>⌄</span></div><div class="lessons"><div class="lesson"><span class="lesson-icon">▤</span><button onclick="toast('Mở tổng quan khoá học')">Tổng quan khoá học</button></div></div></div><div class="accordion open"><div class="accordion-head" onclick="this.parentElement.classList.toggle('open')"><strong>✓　<span style="color:#8051d8">Khảo sát</span>　Khảo sát trước khoá học</strong><span>1 phân học　⌄</span></div><div class="lessons"><div class="lesson done"><span class="lesson-icon">●</span><button>Khảo sát trước khoá học</button></div></div></div><div class="accordion open"><div class="accordion-head" onclick="this.parentElement.classList.toggle('open')"><strong>◉　<span style="color:#8051d8">Bài 1</span>　SỨC MẠNH CỦA GENAI TRONG KỶ NGUYÊN SỐ MỚI</strong><span>4 phân học　⌄</span></div><div class="lessons"><div class="lesson"><span class="lesson-icon">▤</span><button onclick="toast('Mở bài 1.1')">1.1. AI và những xu hướng trong lĩnh vực truyền thông hiện đại</button></div><div class="lesson locked"><span class="lesson-icon">🔒</span><button>1.2. Ứng dụng AI hỗ trợ công việc hằng ngày</button></div><div class="lesson locked"><span class="lesson-icon">🔒</span><button>1.3. Kỹ năng tương tác và đặt câu lệnh hiệu quả</button></div><div class="lesson locked"><span class="lesson-icon">🔒</span><button>1.4. Câu hỏi ôn tập</button></div></div></div><div class="section-title"><span class="spark">✦</span><b>MindBridge sẽ cá nhân hóa thứ tự bài học tại đây</b></div>`}
-function adminView(){document.getElementById('main').innerHTML=`<div class="toolbar"><div class="content-title">✦ <b>MindBridge Content Studio</b></div><button class="primary" onclick="toast('AI đang tạo bản nháp học liệu')">Tạo bài với AI</button></div><div class="admin-grid"><section class="admin-card"><h2>Thư viện học liệu</h2><p class="muted">Nội dung gắn với khóa học hiện tại</p><div class="doc"><b>1.1. AI và những xu hướng...</b><small>Published · Skill: AI literacy</small></div><div class="doc"><b>Quiz: Kỹ năng đặt câu lệnh</b><small><span class="status">In Review</span> · 5 câu hỏi · AI draft</small></div><div class="doc"><b>Bài bổ trợ: Prompt cơ bản</b><small>Draft · Prerequisite: khảo sát đầu vào</small></div></section><aside class="admin-card"><h3>Quy trình nội dung</h3><p class="muted">AI chỉ tạo draft, Admin kiểm duyệt trước khi đến học viên.</p><div class="progress" style="margin-top:18px"><i style="width:55%"></i></div><p><b>Draft → In Review → Approved → Published</b></p><button class="primary" style="padding:10px 15px;font-size:12px" onclick="toast('Đã mở danh sách nội dung cần review')">Mở danh sách review</button></aside></div>`}
-function teacherView(){document.getElementById('main').innerHTML=`<div class="toolbar"><div class="content-title">♧ <b>Teacher view · Lớp 7A</b></div><button class="primary" onclick="toast('Đã giao bài bổ trợ cho nhóm cần hỗ trợ')">Giao học liệu</button></div><section class="admin-card"><h2>Tiến độ lớp</h2><p class="muted">Khóa học: Nhà báo 4.0 · 20 học viên</p><div class="teacher-row"><b>Học viên</b><b>Tiến độ</b><b>AI signal</b></div><div class="teacher-row"><span>An Nguyễn</span><span>5%</span><span style="color:#b46710">Cần hỗ trợ</span></div><div class="teacher-row"><span>Minh Trần</span><span>42%</span><span style="color:#6840d8">Theo dõi</span></div><div class="teacher-row"><span>Linh Phạm</span><span>82%</span><span style="color:#168d72">Nâng cao</span></div><div class="mind-panel show"><div class="recommendation"><strong>Đề xuất cho giáo viên</strong><span class="muted">Giao “Prompt cơ bản” cho nhóm 6 học viên đang có tiến độ thấp.</span></div></div></section>`}
-courseHome();
-</script></body></html>
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width,initial-scale=1" name="viewport">
+    <title>MindBridge × EduOne — UI Preview</title>
+    <style>
+    :root {
+      --ink: #171826;
+      --muted: #6f7182;
+      --line: #ece9f4;
+      --purple: #7136ea;
+      --cyan: #42c6dd;
+      --pink: #f8eefe;
+      --panel: #fff;
+      --bg: #f7f4ff;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font:
+        14px / 1.5 Inter,
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        sans-serif;
+      color: var(--ink);
+      background: linear-gradient(120deg, #f7f6ff, #fff7fb 60%, #effbff);
+    }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 0;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 88px 260px 1fr;
+      min-height: 100vh;
+    }
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      align-items: center;
+      padding: 28px 0;
+      background: #fff;
+      border-right: 1px solid #e6e2ef;
+    }
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      font-size: 30px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, #6751ff, #261de2);
+      border-radius: 12px;
+    }
+    .rail-btn {
+      font-size: 22px;
+      color: #7d8191;
+      background: none;
+    }
+    .rail-btn.active {
+      color: #4027e8;
+    }
+    .user {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      margin-top: auto;
+      font-weight: 800;
+      color: #fff;
+      background: #c887f4;
+      border-radius: 50%;
+    }
+    .course-side {
+      padding: 30px 20px;
+      background: rgba(255, 255, 255, 0.68);
+      border-right: 1px solid #eee9f4;
+    }
+    .cover {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 160px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #cdd8ff, #fff1fc);
+      border-radius: 12px;
+    }
+    .cover:after {
+      font-size: 78px;
+      color: #4031db;
+      text-shadow: 8px 8px #8c92ff;
+      content: "✦";
+    }
+    .timer {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 11px;
+      color: #fff;
+      background: #8055c9d9;
+    }
+    .course-title {
+      margin: 14px 0 7px;
+      font-size: 16px;
+      font-weight: 750;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .progress {
+      height: 7px;
+      margin: 5px 0 17px;
+      background: #eeeaf9;
+      border-radius: 99px;
+    }
+    .progress i {
+      display: block;
+      width: 8%;
+      height: 100%;
+      background: linear-gradient(90deg, #3bc4dd, #7c41ef);
+      border-radius: inherit;
+    }
+    .goal {
+      padding: 14px;
+      margin-bottom: 16px;
+      background: #fff2ff;
+      border-radius: 10px;
+    }
+    .goal strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .side-nav {
+      display: grid;
+      gap: 3px;
+    }
+    .side-nav button {
+      padding: 11px 12px;
+      color: #434353;
+      text-align: left;
+      background: transparent;
+      border-radius: 8px;
+    }
+    .side-nav button.active {
+      font-weight: 700;
+      color: #6840d8;
+      background: #eee6ff;
+    }
+    .side-label {
+      margin: 13px 12px 4px;
+      font-size: 11px;
+      color: #a09eae;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .main {
+      width: 100%;
+      max-width: 1200px;
+      padding: 34px 40px 60px;
+      margin: auto;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 17px;
+    }
+    .flow-tabs {
+      display: flex;
+      gap: 7px;
+      overflow: auto;
+    }
+    .flow-tabs button {
+      padding: 8px 12px;
+      color: #77768a;
+      background: #fff;
+      border: 1px solid #ebe8f2;
+      border-radius: 8px;
+    }
+    .flow-tabs button.active {
+      color: #fff;
+      background: #7040de;
+      border-color: #7040de;
+    }
+    .hero {
+      position: relative;
+      min-height: 360px;
+      padding: 38px 38px 28px;
+      overflow: hidden;
+      background: linear-gradient(125deg, #f0edff, #ffedf8 57%, #effcff);
+      border-radius: 22px;
+    }
+    .hero:after {
+      position: absolute;
+      top: 12%;
+      right: 8%;
+      font-size: 210px;
+      color: #737df3aa;
+      content: "✦";
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 800;
+      color: #7745d7;
+    }
+    .hero h1 {
+      position: relative;
+      z-index: 1;
+      max-width: 620px;
+      margin: 10px 0;
+      font-size: 38px;
+      line-height: 1.13;
+      letter-spacing: -0.04em;
+    }
+    .hero p {
+      position: relative;
+      z-index: 1;
+      font-size: 16px;
+      color: #656477;
+    }
+    .meta {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 40px;
+      margin: 22px 0;
+    }
+    .meta b {
+      display: block;
+      font-size: 17px;
+      color: #6c35da;
+    }
+    .primary {
+      position: relative;
+      z-index: 1;
+      padding: 14px 25px;
+      font-weight: 800;
+      color: #fff;
+      background: #7335ea;
+      border-radius: 30px;
+      box-shadow: 0 10px 20px #7435ea33;
+    }
+    .section-title {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      margin: 25px 0 13px;
+      font-size: 17px;
+    }
+    .spark {
+      color: #28bbd5;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .card {
+      padding: 20px;
+      background: #fff9ffcc;
+      border: 1px solid #eee8f3;
+      border-radius: 16px;
+    }
+    .card .ico {
+      font-size: 25px;
+    }
+    .card h3 {
+      margin: 13px 0 5px;
+      font-size: 15px;
+    }
+    .card p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .content-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 19px;
+    }
+    .accordion {
+      padding: 18px 24px;
+      margin: 12px 0;
+      background: #ffffffd9;
+      border: 1px solid #eeeaf3;
+      border-radius: 17px;
+    }
+    .accordion-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .accordion-head strong {
+      font-size: 17px;
+    }
+    .lessons {
+      display: none;
+      margin: 17px 0 0 22px;
+    }
+    .accordion.open .lessons {
+      display: grid;
+      gap: 10px;
+    }
+    .lesson {
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      color: #4f5060;
+    }
+    .lesson.done {
+      color: #18a998;
+    }
+    .lesson.locked {
+      color: #aaa;
+    }
+    .lesson button {
+      color: inherit;
+      text-align: left;
+      background: none;
+    }
+    .lesson-icon {
+      font-size: 17px;
+    }
+    .mind-panel {
+      display: none;
+      padding: 18px;
+      margin-top: 14px;
+      background: linear-gradient(135deg, #f5efff, #fff);
+      border: 1px solid #ded2ff;
+      border-radius: 15px;
+    }
+    .mind-panel.show {
+      display: block;
+    }
+    .recommendation {
+      padding: 14px;
+      background: #fff;
+      border: 1px solid #e7ddfb;
+      border-radius: 11px;
+    }
+    .recommendation strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .explain {
+      padding: 10px;
+      margin-top: 9px;
+      font-size: 12px;
+      color: #514579;
+      background: #f3edff;
+      border-left: 3px solid #7040de;
+    }
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 14px;
+    }
+    .admin-card {
+      padding: 20px;
+      background: #fff;
+      border: 1px solid #ebe6f2;
+      border-radius: 16px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #b46710;
+      background: #fff0dd;
+      border-radius: 6px;
+    }
+    .doc {
+      padding: 12px;
+      margin: 8px 0;
+      background: #fff;
+      border: 1px solid #eeeaf2;
+      border-radius: 10px;
+    }
+    .doc small {
+      display: block;
+      color: var(--muted);
+    }
+    .teacher-row {
+      display: grid;
+      grid-template-columns: 1fr 100px 120px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #eeeaf3;
+    }
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 24px;
+      padding: 12px 15px;
+      color: #fff;
+      background: #20213b;
+      border-radius: 10px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: 0.2s;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: none;
+    }
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 70px 230px 1fr;
+      }
+      .main {
+        padding: 24px;
+      }
+      .cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 750px) {
+      .app {
+        display: block;
+      }
+      .rail {
+        flex-direction: row;
+        gap: 18px;
+        height: 60px;
+        padding: 10px 15px;
+      }
+      .rail .user {
+        margin: 0 0 0 auto;
+      }
+      .course-side {
+        display: none;
+      }
+      .main {
+        padding: 17px;
+      }
+      .hero h1 {
+        font-size: 29px;
+      }
+      .meta {
+        gap: 20px;
+      }
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+      .cards {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail">
+        <div class="logo">e</div>
+        <button class="rail-btn active">⌂</button
+        ><button class="rail-btn">▣</button><button class="rail-btn">◉</button>
+        <div class="user">V</div>
+      </aside>
+      <aside class="course-side">
+        <div class="cover">
+          <div class="timer">⏰ Thời gian học <b>04:05</b></div>
+        </div>
+        <div class="course-title">
+          Nhà báo 4.0: Làm chủ nội dung trong kỷ nguyên AI
+        </div>
+        <p class="muted">Hết hạn: 14/08/2026, 14:04</p>
+        <div class="progress-label"><span>Tiến độ</span><b>5%</b></div>
+        <div class="progress"><i></i></div>
+        <div class="goal">
+          <strong>Hoàn thành 1/4 mục tiêu</strong
+          ><span>◉ ◉ <b style="color: #31bed3">◉</b> ◉</span>
+        </div>
+        <nav class="side-nav">
+          <button class="active" onclick="courseHome()">
+            Trang chủ khoá học
+          </button><button>Phiên học trực tuyến</button>
+          <div class="side-label">Nội dung</div>
+          <button onclick="contentView()">
+            Giới thiệu chung về khoá học　›
+          </button><button onclick="contentView()">
+            Khảo sát. Khảo sát trước khoá　›
+          </button><button onclick="contentView()">
+            Bài 1. SỨC MẠNH CỦA GENAI　›
+          </button>
+        </nav>
+      </aside>
+      <main class="main" id="main"></main>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script>
+    "use strict";
+    const _toast = (m) => {
+      const t = document.querySelector(".toast");
+      t.textContent = m;
+      t.classList.add("show");
+      clearTimeout(window._t);
+      window._t = setTimeout(() => t.classList.remove("show"), 2200);
+    };
+    function courseHome() {
+      document.getElementById("main").innerHTML =
+        `<div class="toolbar"><div class="flow-tabs"><button class="active" onclick="courseHome()">Học viên</button><button onclick="teacherView()">Giáo viên</button><button onclick="adminView()">Admin / Content Studio</button></div><span class="muted">✦ MindBridge enabled</span></div><section class="hero"><div class="eyebrow">✦ Tạo ra bởi AI · MindBridge</div><h1>Nhà báo 4.0: Làm chủ nội dung trong kỷ nguyên AI</h1><p>AI for Impact</p><div class="meta"><div>Khối lượng<b>5 bài học</b></div><div>Thời lượng<b>4 tuần</b></div></div><button class="primary" onclick="toast('Tiếp tục bài học 1.1')">Tiếp tục học ↗</button></section><div class="section-title"><span class="spark">✎</span><b>Giới thiệu khoá học</b></div><div class="cards"><div class="card"><div class="ico">🛡️</div><h3>Hiểu đúng & dùng AI an toàn</h3><p>Nắm các khái niệm và nguyên tắc cơ bản.</p></div><div class="card"><div class="ico">🎯</div><h3>Làm chủ kỹ năng đặt câu lệnh</h3><p>Thực hành prompt theo mục tiêu.</p></div><div class="card"><div class="ico">▣</div><h3>Xử lý đa phương tiện</h3><p>Hình ảnh, âm thanh và tài liệu.</p></div><div class="card"><div class="ico">👥</div><h3>Phân tích và tổng hợp</h3><p>Đọc, kiểm chứng và tạo nội dung.</p></div></div><div class="section-title"><span class="spark">✦</span><b>MindBridge đề xuất cho bạn</b></div><button class="primary" onclick="toggleMind()" style="padding:10px 17px;font-size:12px">Xem lộ trình AI của tôi</button><div class="mind-panel" id="mind"><div class="recommendation"><strong>Ôn lại: Kỹ năng đặt câu lệnh cơ bản · 12 phút</strong><span class="muted">Bài bổ trợ trước khi tiếp tục bài 1.1</span><div class="explain"><b>Vì sao được đề xuất?</b><br>Bạn chưa hoàn thành khảo sát đầu vào và đang ở mức tiến độ 5%. Bài này giúp xác định mức độ phù hợp trước khi mở nội dung tiếp theo.</div><button class="primary" style="margin-top:12px;padding:9px 14px;font-size:12px" onclick="toast('Đã mở bài bổ trợ')">Bắt đầu bài bổ trợ</button></div></div>`;
+    }
+    function _toggleMind() {
+      document.getElementById("mind").classList.toggle("show");
+    }
+    function _contentView() {
+      document.getElementById("main").innerHTML =
+        `<div class="toolbar"><div class="content-title">▣ <b>Nội dung khoá học</b></div><span class="muted">MindBridge theo dõi tiến độ</span></div><div class="accordion open"><div class="accordion-head" onclick="this.parentElement.classList.toggle('open')"><strong>ⓘ　Giới thiệu chung về khoá học</strong><span>⌄</span></div><div class="lessons"><div class="lesson"><span class="lesson-icon">▤</span><button onclick="toast('Mở tổng quan khoá học')">Tổng quan khoá học</button></div></div></div><div class="accordion open"><div class="accordion-head" onclick="this.parentElement.classList.toggle('open')"><strong>✓　<span style="color:#8051d8">Khảo sát</span>　Khảo sát trước khoá học</strong><span>1 phân học　⌄</span></div><div class="lessons"><div class="lesson done"><span class="lesson-icon">●</span><button>Khảo sát trước khoá học</button></div></div></div><div class="accordion open"><div class="accordion-head" onclick="this.parentElement.classList.toggle('open')"><strong>◉　<span style="color:#8051d8">Bài 1</span>　SỨC MẠNH CỦA GENAI TRONG KỶ NGUYÊN SỐ MỚI</strong><span>4 phân học　⌄</span></div><div class="lessons"><div class="lesson"><span class="lesson-icon">▤</span><button onclick="toast('Mở bài 1.1')">1.1. AI và những xu hướng trong lĩnh vực truyền thông hiện đại</button></div><div class="lesson locked"><span class="lesson-icon">🔒</span><button>1.2. Ứng dụng AI hỗ trợ công việc hằng ngày</button></div><div class="lesson locked"><span class="lesson-icon">🔒</span><button>1.3. Kỹ năng tương tác và đặt câu lệnh hiệu quả</button></div><div class="lesson locked"><span class="lesson-icon">🔒</span><button>1.4. Câu hỏi ôn tập</button></div></div></div><div class="section-title"><span class="spark">✦</span><b>MindBridge sẽ cá nhân hóa thứ tự bài học tại đây</b></div>`;
+    }
+    function _adminView() {
+      document.getElementById("main").innerHTML =
+        `<div class="toolbar"><div class="content-title">✦ <b>MindBridge Content Studio</b></div><button class="primary" onclick="toast('AI đang tạo bản nháp học liệu')">Tạo bài với AI</button></div><div class="admin-grid"><section class="admin-card"><h2>Thư viện học liệu</h2><p class="muted">Nội dung gắn với khóa học hiện tại</p><div class="doc"><b>1.1. AI và những xu hướng...</b><small>Published · Skill: AI literacy</small></div><div class="doc"><b>Quiz: Kỹ năng đặt câu lệnh</b><small><span class="status">In Review</span> · 5 câu hỏi · AI draft</small></div><div class="doc"><b>Bài bổ trợ: Prompt cơ bản</b><small>Draft · Prerequisite: khảo sát đầu vào</small></div></section><aside class="admin-card"><h3>Quy trình nội dung</h3><p class="muted">AI chỉ tạo draft, Admin kiểm duyệt trước khi đến học viên.</p><div class="progress" style="margin-top:18px"><i style="width:55%"></i></div><p><b>Draft → In Review → Approved → Published</b></p><button class="primary" style="padding:10px 15px;font-size:12px" onclick="toast('Đã mở danh sách nội dung cần review')">Mở danh sách review</button></aside></div>`;
+    }
+    function _teacherView() {
+      document.getElementById("main").innerHTML =
+        `<div class="toolbar"><div class="content-title">♧ <b>Teacher view · Lớp 7A</b></div><button class="primary" onclick="toast('Đã giao bài bổ trợ cho nhóm cần hỗ trợ')">Giao học liệu</button></div><section class="admin-card"><h2>Tiến độ lớp</h2><p class="muted">Khóa học: Nhà báo 4.0 · 20 học viên</p><div class="teacher-row"><b>Học viên</b><b>Tiến độ</b><b>AI signal</b></div><div class="teacher-row"><span>An Nguyễn</span><span>5%</span><span style="color:#b46710">Cần hỗ trợ</span></div><div class="teacher-row"><span>Minh Trần</span><span>42%</span><span style="color:#6840d8">Theo dõi</span></div><div class="teacher-row"><span>Linh Phạm</span><span>82%</span><span style="color:#168d72">Nâng cao</span></div><div class="mind-panel show"><div class="recommendation"><strong>Đề xuất cho giáo viên</strong><span class="muted">Giao “Prompt cơ bản” cho nhóm 6 học viên đang có tiến độ thấp.</span></div></div></section>`;
+    }
+    courseHome();
+    </script>
+  </body>
+</html>
