@@ -5,7 +5,7 @@ import {
 	learningContent,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../index";
@@ -95,6 +95,17 @@ const transitionVersion = async ({
 			note,
 			toStatus,
 		});
+		const versionMetadata = updatedVersion.metadata as Record<string, unknown>;
+		const draftTitle =
+			typeof versionMetadata._draftTitle === "string"
+				? versionMetadata._draftTitle
+				: undefined;
+		if (toStatus === "published" && draftTitle !== undefined) {
+			await transaction
+				.update(learningContent)
+				.set({ title: draftTitle })
+				.where(eq(learningContent.id, updatedVersion.contentId));
+		}
 
 		return updatedVersion;
 	});
@@ -113,7 +124,7 @@ const listVersions = async (status?: ContentStatus) =>
 			reviewedAt: contentVersion.reviewedAt,
 			reviewedBy: contentVersion.reviewedBy,
 			status: contentVersion.status,
-			title: learningContent.title,
+			title: sql<string>`coalesce(${contentVersion.metadata}->>'_draftTitle', ${learningContent.title})`,
 			updatedAt: contentVersion.updatedAt,
 			versionNumber: contentVersion.versionNumber,
 		})
@@ -163,15 +174,15 @@ export const contentWorkflowRouter = {
 		.handler(async ({ input }) =>
 			db.transaction(async (transaction) => {
 				const [updatedVersion] = await transaction
-					.update(contentVersion)
-					.set({ body: input.body, metadata: input.metadata })
+					.select()
+					.from(contentVersion)
 					.where(
 						and(
 							eq(contentVersion.id, input.contentVersionId),
 							eq(contentVersion.status, "draft"),
 						),
 					)
-					.returning();
+					.limit(1);
 
 				if (!updatedVersion) {
 					throw new ORPCError("CONFLICT", {
@@ -179,20 +190,39 @@ export const contentWorkflowRouter = {
 					});
 				}
 
+				const updates: Partial<typeof contentVersion.$inferInsert> = {};
+				if (input.body !== undefined) updates.body = input.body;
+				if (input.metadata !== undefined) updates.metadata = input.metadata;
 				if (input.title !== undefined) {
-					await transaction
-						.update(learningContent)
-						.set({ title: input.title })
-						.where(eq(learningContent.id, updatedVersion.contentId));
+					const existingMetadata = updatedVersion.metadata as Record<
+						string,
+						unknown
+					>;
+					updates.metadata = {
+						...(input.metadata ?? existingMetadata),
+						_draftTitle: input.title,
+					};
 				}
 
-				return updatedVersion;
+				let savedVersion = updatedVersion;
+				if (Object.keys(updates).length > 0) {
+					const [persistedVersion] = await transaction
+						.update(contentVersion)
+						.set(updates)
+						.where(eq(contentVersion.id, input.contentVersionId))
+						.returning();
+					savedVersion = persistedVersion ?? updatedVersion;
+				}
+				return savedVersion ?? updatedVersion;
 			}),
 		),
 	list: permissionProcedure("content:review")
 		.input(listInput)
 		.handler(({ input }) => listVersions(input.status)),
-	listPublished: protectedProcedure.handler(() => listVersions("published")),
+	listPublished: protectedProcedure.handler(async () => {
+		const versions = await listVersions("published");
+		return versions.map(({ reviewedAt, reviewedBy, ...version }) => version);
+	}),
 	publish: permissionProcedure("content:publish")
 		.input(transitionInput)
 		.handler(({ context, input }) =>

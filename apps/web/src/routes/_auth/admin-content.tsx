@@ -169,6 +169,15 @@ function ContentVersionCard({ version }: { version: ContentVersion }) {
 	const [metadata, setMetadata] = useState(() =>
 		JSON.stringify(version.metadata, null, 2),
 	);
+	const startEditing = () => {
+		setTitle(version.title);
+		setBody(JSON.stringify(version.body, null, 2));
+		setMetadata(JSON.stringify(version.metadata, null, 2));
+		setIsEditing(true);
+	};
+	const cancelEditing = () => {
+		setIsEditing(false);
+	};
 	const refreshLists = async () => {
 		await queryClient.invalidateQueries({
 			queryKey: orpc.contentWorkflow.list.key(),
@@ -251,6 +260,31 @@ function ContentVersionCard({ version }: { version: ContentVersion }) {
 		}
 	};
 
+	const renderDraftActions = () => {
+		if (version.status !== "draft") return null;
+		if (isEditing) {
+			return (
+				<>
+					<Button onClick={cancelEditing} type="button" variant="outline">
+						Hủy
+					</Button>
+					<Button
+						disabled={editDraft.isPending}
+						onClick={handleSaveDraft}
+						type="button"
+					>
+						{editDraft.isPending ? "Đang lưu…" : "Lưu bản nháp"}
+					</Button>
+				</>
+			);
+		}
+		return (
+			<Button onClick={startEditing} type="button" variant="outline">
+				Chỉnh sửa
+			</Button>
+		);
+	};
+
 	return (
 		<Card>
 			<CardHeader>
@@ -294,34 +328,7 @@ function ContentVersionCard({ version }: { version: ContentVersion }) {
 				)}
 			</CardContent>
 			<CardFooter className="flex flex-wrap justify-end gap-2">
-				{version.status === "draft" ? (
-					isEditing ? (
-						<>
-							<Button
-								onClick={() => setIsEditing(false)}
-								type="button"
-								variant="outline"
-							>
-								Hủy
-							</Button>
-							<Button
-								disabled={editDraft.isPending}
-								onClick={handleSaveDraft}
-								type="button"
-							>
-								{editDraft.isPending ? "Đang lưu…" : "Lưu bản nháp"}
-							</Button>
-						</>
-					) : (
-						<Button
-							onClick={() => setIsEditing(true)}
-							type="button"
-							variant="outline"
-						>
-							Chỉnh sửa
-						</Button>
-					)
-				) : null}
+				{renderDraftActions()}
 				{actionLabels[version.status] && !isEditing ? (
 					<Button
 						disabled={isTransitioning}
