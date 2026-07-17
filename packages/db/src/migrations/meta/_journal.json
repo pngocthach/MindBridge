@@ -8,6 +8,13 @@
 			"when": 1784288525801,
 			"tag": "0000_round_weapon_omega",
 			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1784293931735,
+			"tag": "0001_fixed_emma_frost",
+			"breakpoints": true
 		}
 	]
 }
