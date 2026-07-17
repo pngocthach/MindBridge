@@ -4,6 +4,7 @@ import { protectedProcedure, publicProcedure } from "../index";
 import { contentWorkflowRouter } from "./content-workflow";
 import { masteryRouter } from "./mastery";
 import { sourceDocumentRouter } from "./source-documents";
+import { teacherRouter } from "./teacher";
 import { tutorRouter } from "./tutor";
 
 export const appRouter = {
@@ -15,6 +16,7 @@ export const appRouter = {
 		user: context.session?.user,
 	})),
 	sourceDocuments: sourceDocumentRouter,
+	teacher: teacherRouter,
 	tutor: tutorRouter,
 };
 export type AppRouter = typeof appRouter;
