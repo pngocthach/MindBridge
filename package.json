@@ -24,6 +24,7 @@
 		"db:studio": "turbo run db:studio -F @MindBridge/db",
 		"db:generate": "turbo run db:generate -F @MindBridge/db",
 		"db:migrate": "turbo run db:migrate -F @MindBridge/db",
+		"db:seed": "turbo run db:seed -F @MindBridge/db",
 		"check": "ultracite check",
 		"test": "vitest run",
 		"fix": "ultracite fix"
