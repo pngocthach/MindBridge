@@ -1,7 +1,7 @@
-import { createContext } from "@MindBridge/api/context";
 import { appRouter } from "@MindBridge/api/routers/index";
 import { auth } from "@MindBridge/auth";
 import { env } from "@MindBridge/env/server";
+import { fileURLToPath } from "node:url";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -10,8 +10,16 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { createContext } from "./context";
+import { LocalPythonDocumentConverter } from "./service/document-ingestion/converter";
+import { DocumentIngestionService } from "./service/document-ingestion/service";
 
 const app = new Hono();
+const documentIngestionService = new DocumentIngestionService(
+	new LocalPythonDocumentConverter(
+		fileURLToPath(new URL("../../ingestion-worker/", import.meta.url)),
+	),
+);
 
 app.use(logger());
 app.use(
@@ -48,7 +56,10 @@ export const rpcHandler = new RPCHandler(appRouter, {
 });
 
 app.use("/*", async (c, next) => {
-	const context = await createContext({ context: c });
+	const context = await createContext({
+		context: c,
+		documentIngestion: documentIngestionService,
+	});
 
 	const rpcResult = await rpcHandler.handle(c.req.raw, {
 		context,
