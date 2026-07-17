@@ -1,6 +1,15 @@
 import { eventIterator } from "@orpc/contract";
 import { z } from "zod";
 
+const contentDraftMetadata = z.object({
+	difficulty: z.string().trim().min(1).max(100),
+	durationMinutes: z.number().int().positive().max(1_440),
+	gradeLevel: z.number().int().positive().max(12),
+	learningObjectives: z.array(z.string().trim().min(1).max(500)).max(20),
+	prerequisites: z.array(z.string().trim().min(1).max(500)).max(20),
+	skillIds: z.array(z.string().uuid()).max(50),
+});
+
 import { permissionProcedure } from "../index";
 
 const generationEvent = z.discriminatedUnion("type", [
@@ -32,6 +41,7 @@ export const contentGenerationRouter = {
 				chunkIds: z.array(z.string().uuid()).min(1).optional(),
 				courseId: z.string().uuid(),
 				documentId: z.string().uuid(),
+				metadata: contentDraftMetadata,
 			}),
 		)
 		.output(eventIterator(generationEvent))
