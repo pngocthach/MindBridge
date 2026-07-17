@@ -73,7 +73,7 @@ Do not commit `.env` files or generated build output.
 
 ## GitHub Project Workflow
 
-The active backlog is GitHub Project **MindBridge** (`#5`) in `pngocthach/MindBridge`. Every feature and technical task must have an issue, an estimate, hackathon priority, area, and technical labels.
+The active backlog is GitHub Project **MindBridge** (`#5`) in `pngocthach/MindBridge` (https://github.com/users/pngocthach/projects/5). Every feature and technical task must have an issue, an estimate, hackathon priority, area, and technical labels.
 
 ```bash
 # List the whole backlog: status, estimate, title
@@ -121,7 +121,6 @@ git switch -c <type>/<issue-number>-<short-slug>
 ```
 
 - Never commit, push, or merge before the user has reviewed the changes and explicitly approved it in this conversation.
-- Before merging any pull request, require at least one review comment from GitHub Copilot on that pull request.
 
 - Name branches `feat/`, `fix/`, or `chore/`; for example, `feat/11-auth-rbac`.
 - Keep each branch limited to its issue; do not mix unrelated refactors or tasks.

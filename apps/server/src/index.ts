@@ -3,6 +3,7 @@ import { MAX_DOCUMENT_BYTES } from "@MindBridge/api/routers/source-documents";
 import { auth } from "@MindBridge/auth";
 import { env } from "@MindBridge/env/server";
 import { fileURLToPath } from "node:url";
+import { serve } from "@hono/node-server";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -11,9 +12,11 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
+import { logger as honoLogger } from "hono/logger";
 import { createContext } from "./context";
+import { logger } from "./logger";
 import { LessonGenerationService } from "./service/content-generation/service";
+import { CourseCatalogService } from "./service/course-catalog/service";
 import { LocalPythonDocumentConverter } from "./service/document-ingestion/converter";
 import { DocumentIngestionService } from "./service/document-ingestion/service";
 
@@ -28,6 +31,8 @@ const lessonGenerationService =
 			})
 		: new LessonGenerationService();
 
+const courseCatalogService = new CourseCatalogService();
+
 const app = new Hono();
 const documentIngestionService = new DocumentIngestionService(
 	new LocalPythonDocumentConverter(
@@ -35,7 +40,7 @@ const documentIngestionService = new DocumentIngestionService(
 	),
 );
 
-app.use(logger());
+app.use(honoLogger((message) => logger.info(message)));
 app.use(
 	"/*",
 	cors({
@@ -62,7 +67,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 export const apiHandler = new OpenAPIHandler(appRouter, {
 	interceptors: [
 		onError((error) => {
-			console.error(error);
+			logger.error({ err: error }, "OpenAPI request failed");
 		}),
 	],
 	plugins: [
@@ -75,7 +80,7 @@ export const apiHandler = new OpenAPIHandler(appRouter, {
 export const rpcHandler = new RPCHandler(appRouter, {
 	interceptors: [
 		onError((error) => {
-			console.error(error);
+			logger.error({ err: error }, "RPC request failed");
 		}),
 	],
 });
@@ -83,6 +88,7 @@ export const rpcHandler = new RPCHandler(appRouter, {
 app.use("/*", async (c, next) => {
 	const context = await createContext({
 		contentGeneration: lessonGenerationService,
+		courseCatalog: courseCatalogService,
 		context: c,
 		documentIngestion: documentIngestionService,
 	});
@@ -110,14 +116,12 @@ app.use("/*", async (c, next) => {
 
 app.get("/", (c) => c.text("OK"));
 
-import { serve } from "@hono/node-server";
-
 serve(
 	{
 		fetch: app.fetch,
 		port: 3000,
 	},
 	(info) => {
-		console.log(`Server is running on http://localhost:${info.port}`);
+		logger.info({ port: info.port }, "Server is running");
 	},
 );

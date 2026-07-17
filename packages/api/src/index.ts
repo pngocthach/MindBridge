@@ -12,6 +12,11 @@ export interface IngestDocumentInput {
 	uploadedBy: string;
 }
 
+export interface IngestTextInput {
+	text: string;
+	uploadedBy: string;
+}
+
 export type IngestDocumentResult =
 	| {
 			chunkCount: number;
@@ -26,6 +31,7 @@ export type IngestDocumentResult =
 
 export interface DocumentIngestionPort {
 	ingest(input: IngestDocumentInput): Promise<IngestDocumentResult>;
+	ingestText(input: IngestTextInput): Promise<IngestDocumentResult>;
 }
 
 export type ContentGenerationEvent =
@@ -39,11 +45,21 @@ export type ContentGenerationEvent =
 	  }
 	| { generationId: string; message: string; type: "failed" };
 
+export interface ContentDraftMetadata {
+	difficulty: string;
+	gradeLevel: number;
+	durationMinutes: number;
+	learningObjectives: string[];
+	prerequisites: string[];
+	skillIds: string[];
+}
+
 export interface GenerateLessonDraftInput {
 	canUseAnySource: boolean;
 	chunkIds?: string[];
 	courseId: string;
 	documentId: string;
+	metadata: ContentDraftMetadata;
 	requestedBy: string;
 	signal: AbortSignal;
 }
@@ -54,8 +70,25 @@ export interface ContentGenerationPort {
 	): AsyncGenerator<ContentGenerationEvent>;
 }
 
+export interface CourseSearchInput {
+	canReadAllCourses: boolean;
+	query: string;
+	requestedBy: string;
+}
+
+export interface CourseOption {
+	gradeLevel: number;
+	id: string;
+	title: string;
+}
+
+export interface CourseCatalogPort {
+	search(input: CourseSearchInput): Promise<CourseOption[]>;
+}
+
 export interface ApiContext {
 	contentGeneration: ContentGenerationPort;
+	courseCatalog: CourseCatalogPort;
 	documentIngestion: DocumentIngestionPort;
 	session: {
 		user: {
@@ -76,6 +109,7 @@ const requireAuth = o.middleware(async ({ context, next }) => {
 	return next({
 		context: {
 			contentGeneration: context.contentGeneration,
+			courseCatalog: context.courseCatalog,
 			documentIngestion: context.documentIngestion,
 			session: context.session,
 		},
@@ -94,6 +128,7 @@ export const permissionProcedure = (permission: Permission) =>
 		return next({
 			context: {
 				contentGeneration: context.contentGeneration,
+				courseCatalog: context.courseCatalog,
 				documentIngestion: context.documentIngestion,
 				role,
 				session: context.session,
