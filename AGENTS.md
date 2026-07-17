@@ -120,6 +120,8 @@ git pull --ff-only origin main
 git switch -c <type>/<issue-number>-<short-slug>
 ```
 
+- Never commit, push, or merge before the user has reviewed the changes and explicitly approved it in this conversation.
+
 - Name branches `feat/`, `fix/`, or `chore/`; for example, `feat/11-auth-rbac`.
 - Keep each branch limited to its issue; do not mix unrelated refactors or tasks.
 - Use focused Conventional Commits in English, for example: `feat(auth): add role-based sign-in (#11)`.
@@ -154,6 +156,10 @@ pnpm check-types
 ## Core Principles
 
 Write code that is **accessible, performant, type-safe, and maintainable**. Focus on clarity and explicit intent over brevity.
+
+### Research and Documentation
+
+- When a tool or MCP such as Context7 cannot provide the needed documentation, use web search before proceeding.
 
 ### Type Safety & Explicitness
 

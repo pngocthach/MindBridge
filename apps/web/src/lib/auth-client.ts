@@ -1,4 +1,5 @@
 import type { auth } from "@MindBridge/auth";
+import { env } from "@MindBridge/env/web";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
