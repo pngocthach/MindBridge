@@ -4,6 +4,8 @@ import { env } from "@MindBridge/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
+import { userRoles } from "./permissions";
+
 export function createAuth() {
 	const db = createDb();
 
@@ -24,7 +26,16 @@ export function createAuth() {
 		emailAndPassword: {
 			enabled: true,
 		},
-		plugins: [],
+		user: {
+			additionalFields: {
+				role: {
+					defaultValue: "learner",
+					input: false,
+					required: true,
+					type: [...userRoles],
+				},
+			},
+		},
 		secret: env.BETTER_AUTH_SECRET,
 		trustedOrigins: [env.CORS_ORIGIN],
 	});

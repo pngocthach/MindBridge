@@ -8,6 +8,7 @@
 		"dev": "vite dev"
 	},
 	"dependencies": {
+		"@MindBridge/auth": "workspace:*",
 		"@MindBridge/api": "workspace:*",
 		"@MindBridge/env": "workspace:*",
 		"@MindBridge/ui": "workspace:*",

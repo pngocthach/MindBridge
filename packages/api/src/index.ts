@@ -1,3 +1,8 @@
+import {
+	hasPermission,
+	isUserRole,
+	type Permission,
+} from "@MindBridge/auth/permissions";
 import { ORPCError, os } from "@orpc/server";
 
 import type { Context } from "./context";
@@ -18,3 +23,18 @@ const requireAuth = o.middleware(async ({ context, next }) => {
 });
 
 export const protectedProcedure = publicProcedure.use(requireAuth);
+
+export const permissionProcedure = (permission: Permission) =>
+	protectedProcedure.use(async ({ context, next }) => {
+		const role = context.session.user.role;
+		if (!isUserRole(role) || !hasPermission(role, permission)) {
+			throw new ORPCError("FORBIDDEN");
+		}
+
+		return next({
+			context: {
+				role,
+				session: context.session,
+			},
+		});
+	});
