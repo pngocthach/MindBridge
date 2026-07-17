@@ -1,4 +1,12 @@
 import { Button } from "@MindBridge/ui/components/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@MindBridge/ui/components/card";
 import { Input } from "@MindBridge/ui/components/input";
 import { Label } from "@MindBridge/ui/components/label";
 import { useForm } from "@tanstack/react-form";
@@ -57,90 +65,98 @@ export default function SignInForm({
 	}
 
 	return (
-		<div className="mx-auto mt-10 w-full max-w-md p-6">
-			<h1 className="mb-6 text-center font-bold text-3xl">Welcome Back</h1>
+		<main className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
+			<Card className="w-full max-w-md">
+				<CardHeader>
+					<CardTitle className="text-2xl">Chào mừng bạn trở lại</CardTitle>
+					<CardDescription>
+						Đăng nhập để tiếp tục lộ trình học của bạn.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<form
+						className="space-y-5"
+						onSubmit={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							form.handleSubmit();
+						}}
+					>
+						<form.Field name="email">
+							{(field) => (
+								<div className="space-y-2">
+									<Label htmlFor={field.name}>Email</Label>
+									<Input
+										autoComplete="email"
+										id={field.name}
+										name={field.name}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="ban@example.com"
+										type="email"
+										value={field.state.value}
+									/>
+									{field.state.meta.errors.map((error) => (
+										<p
+											className="text-destructive text-sm"
+											key={error?.message}
+										>
+											{error?.message}
+										</p>
+									))}
+								</div>
+							)}
+						</form.Field>
 
-			<form
-				className="space-y-4"
-				onSubmit={(e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					form.handleSubmit();
-				}}
-			>
-				<div>
-					<form.Field name="email">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Email</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									type="email"
-									value={field.state.value}
-								/>
-								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
+						<form.Field name="password">
+							{(field) => (
+								<div className="space-y-2">
+									<Label htmlFor={field.name}>Mật khẩu</Label>
+									<Input
+										autoComplete="current-password"
+										id={field.name}
+										name={field.name}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										type="password"
+										value={field.state.value}
+									/>
+									{field.state.meta.errors.map((error) => (
+										<p
+											className="text-destructive text-sm"
+											key={error?.message}
+										>
+											{error?.message}
+										</p>
+									))}
+								</div>
+							)}
+						</form.Field>
 
-				<div>
-					<form.Field name="password">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Password</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									type="password"
-									value={field.state.value}
-								/>
-								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
-
-				<form.Subscribe
-					selector={(state) => ({
-						canSubmit: state.canSubmit,
-						isSubmitting: state.isSubmitting,
-					})}
-				>
-					{({ canSubmit, isSubmitting }) => (
-						<Button
-							className="w-full"
-							disabled={!canSubmit || isSubmitting}
-							type="submit"
+						<form.Subscribe
+							selector={(state) => ({
+								canSubmit: state.canSubmit,
+								isSubmitting: state.isSubmitting,
+							})}
 						>
-							{isSubmitting ? "Submitting..." : "Sign In"}
-						</Button>
-					)}
-				</form.Subscribe>
-			</form>
-
-			<div className="mt-4 text-center">
-				<Button
-					className="text-indigo-600 hover:text-indigo-800"
-					onClick={onSwitchToSignUp}
-					variant="link"
-				>
-					Need an account? Sign Up
-				</Button>
-			</div>
-		</div>
+							{({ canSubmit, isSubmitting }) => (
+								<Button
+									className="w-full"
+									disabled={!canSubmit || isSubmitting}
+									type="submit"
+								>
+									{isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+								</Button>
+							)}
+						</form.Subscribe>
+					</form>
+				</CardContent>
+				<CardFooter className="justify-center border-t">
+					<Button onClick={onSwitchToSignUp} type="button" variant="link">
+						Chưa có tài khoản? Tạo tài khoản
+					</Button>
+				</CardFooter>
+			</Card>
+		</main>
 	);
 }
