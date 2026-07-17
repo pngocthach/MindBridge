@@ -1,0 +1,8 @@
+[project]
+name = "mindbridge-ingestion-worker"
+version = "0.1.0"
+description = "Local document-to-Markdown converter for MindBridge"
+requires-python = ">=3.11"
+dependencies = [
+  "markitdown[pptx,docx,xlsx,xls,pdf,outlook,audio-transcription]>=0.1.6",
+]

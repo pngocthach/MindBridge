@@ -1,17 +1,27 @@
-import { createContext } from "@MindBridge/api/context";
 import { appRouter } from "@MindBridge/api/routers/index";
+import { MAX_DOCUMENT_BYTES } from "@MindBridge/api/routers/source-documents";
 import { auth } from "@MindBridge/auth";
 import { env } from "@MindBridge/env/server";
+import { fileURLToPath } from "node:url";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { createContext } from "./context";
+import { LocalPythonDocumentConverter } from "./service/document-ingestion/converter";
+import { DocumentIngestionService } from "./service/document-ingestion/service";
 
 const app = new Hono();
+const documentIngestionService = new DocumentIngestionService(
+	new LocalPythonDocumentConverter(
+		fileURLToPath(new URL("../../ingestion-worker/", import.meta.url)),
+	),
+);
 
 app.use(logger());
 app.use(
@@ -21,6 +31,17 @@ app.use(
 		allowMethods: ["GET", "POST", "OPTIONS"],
 		credentials: true,
 		origin: env.CORS_ORIGIN,
+	}),
+);
+app.use(
+	"/rpc/sourceDocuments/upload",
+	bodyLimit({
+		maxSize: MAX_DOCUMENT_BYTES,
+		onError: (context) =>
+			context.json(
+				{ message: "The uploaded file must be 50 MB or smaller." },
+				413,
+			),
 	}),
 );
 
@@ -48,7 +69,10 @@ export const rpcHandler = new RPCHandler(appRouter, {
 });
 
 app.use("/*", async (c, next) => {
-	const context = await createContext({ context: c });
+	const context = await createContext({
+		context: c,
+		documentIngestion: documentIngestionService,
+	});
 
 	const rpcResult = await rpcHandler.handle(c.req.raw, {
 		context,
