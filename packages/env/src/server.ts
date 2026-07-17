@@ -16,6 +16,9 @@ export const env = createEnv({
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
 			.default("development"),
+		TUTOR_LLM_API_KEY: z.string().optional(),
+		TUTOR_LLM_BASE_URL: z.url().optional(),
+		TUTOR_LLM_MODEL: z.string().optional(),
 	},
 	skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 });

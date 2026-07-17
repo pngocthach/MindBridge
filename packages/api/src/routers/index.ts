@@ -2,8 +2,8 @@ import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
 import { contentGenerationRouter } from "./content-generation";
-import { courseRouter } from "./courses";
 import { contentWorkflowRouter } from "./content-workflow";
+import { courseRouter } from "./courses";
 import { masteryRouter } from "./mastery";
 import { recommendationRouter } from "./recommendation";
 import { sourceDocumentRouter } from "./source-documents";
