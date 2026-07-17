@@ -6,8 +6,8 @@
 		"baml:generate": "baml generate && node scripts/fix-baml-imports.mjs",
 		"build": "pnpm baml:generate && tsdown",
 		"check-types": "tsc -b",
-		"compile": "pnpm baml:generate && bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-		"dev": "pnpm baml:generate && tsx watch src/index.ts",
+		"compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
+		"dev": "tsx watch src/index.ts",
 		"start": "node dist/index.mjs"
 	},
 	"dependencies": {
