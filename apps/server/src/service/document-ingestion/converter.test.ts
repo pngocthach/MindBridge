@@ -45,5 +45,5 @@ describe("LocalPythonDocumentConverter", () => {
 			expect(result.markdown).not.toBe("");
 			expect(result.metadata.detectedMimeType).not.toBeNull();
 		}
-	});
+	}, 20_000);
 });

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../index";
 
-const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 
 const documentUploadInput = z.object({
 	file: z.instanceof(File),
@@ -20,7 +20,7 @@ export const sourceDocumentRouter = {
 			}
 			if (input.file.size > MAX_DOCUMENT_BYTES) {
 				throw new ORPCError("PAYLOAD_TOO_LARGE", {
-					message: "The uploaded file must be 10 MB or smaller.",
+					message: "The uploaded file must be 50 MB or smaller.",
 				});
 			}
 

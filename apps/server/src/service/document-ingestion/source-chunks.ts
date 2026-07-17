@@ -1,4 +1,5 @@
 const MAX_CHUNK_CHARACTERS = 1_800;
+const MIN_CHUNK_CHARACTERS = MAX_CHUNK_CHARACTERS / 2;
 
 export interface SourceTextChunk {
 	charEnd: number;
@@ -16,7 +17,7 @@ export const splitSourceText = (sourceText: string): SourceTextChunk[] => {
 		let charEnd = Math.min(charStart + MAX_CHUNK_CHARACTERS, sourceText.length);
 		const paragraphBoundary = sourceText.lastIndexOf("\n\n", charEnd - 2);
 
-		if (paragraphBoundary > charStart) {
+		if (paragraphBoundary >= charStart + MIN_CHUNK_CHARACTERS) {
 			charEnd = paragraphBoundary + 2;
 		}
 

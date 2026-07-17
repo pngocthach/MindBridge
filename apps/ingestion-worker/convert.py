@@ -8,6 +8,8 @@ from pathlib import Path
 from markitdown import MarkItDown
 from markitdown._exceptions import FileConversionException, UnsupportedFormatException
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 
 def write_result(payload: dict[str, object]) -> None:
     print(json.dumps(payload, ensure_ascii=False))

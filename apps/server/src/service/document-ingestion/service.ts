@@ -32,6 +32,13 @@ export class DocumentIngestionService implements DocumentIngestionPort {
 			}
 			throw error;
 		}
+		if (!convertedDocument.markdown.trim()) {
+			return {
+				message: "No readable text was found in this document.",
+				type: "conversion_error",
+			};
+		}
+
 		const chunks = splitSourceText(convertedDocument.markdown);
 		const document = await db.transaction(async (transaction) => {
 			const [source] = await transaction

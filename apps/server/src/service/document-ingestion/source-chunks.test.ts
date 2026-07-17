@@ -21,4 +21,15 @@ describe("splitSourceText", () => {
 			text: "B".repeat(1_000),
 		});
 	});
+	it("keeps a short leading paragraph with the following text", () => {
+		const sourceText = `A\n\n${"B".repeat(2_000)}`;
+		const chunks = splitSourceText(sourceText);
+
+		expect(chunks[0]).toEqual({
+			charEnd: 1_800,
+			charStart: 0,
+			ordinal: 1,
+			text: sourceText.slice(0, 1_800),
+		});
+	});
 });

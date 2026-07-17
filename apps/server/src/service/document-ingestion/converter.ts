@@ -18,6 +18,17 @@ export type DocumentConversionErrorCode =
 	| "UNREADABLE_DOCUMENT"
 	| "UNSUPPORTED_FORMAT";
 
+const DOCUMENT_CONVERSION_ERROR_CODES: Record<
+	DocumentConversionErrorCode,
+	true
+> = {
+	CONVERSION_FAILED: true,
+	EMPTY_DOCUMENT: true,
+	INVALID_REQUEST: true,
+	UNREADABLE_DOCUMENT: true,
+	UNSUPPORTED_FORMAT: true,
+};
+
 export interface ConvertDocumentInput {
 	content: Uint8Array;
 	fileName: string;
@@ -110,7 +121,7 @@ const runWorker = async (
 		{
 			cwd: workerDirectory,
 			shell: false,
-			stdio: ["ignore", "pipe", "pipe"],
+			stdio: ["ignore", "pipe", "inherit"],
 			timeout: WORKER_TIMEOUT_MS,
 			windowsHide: true,
 		},
@@ -128,7 +139,6 @@ const runWorker = async (
 		}
 		outputChunks.push(chunk);
 	});
-	childProcess.stderr?.resume();
 
 	try {
 		await once(childProcess, "close");
@@ -197,6 +207,7 @@ const isWorkerResult = (value: unknown): value is WorkerResult => {
 		value.error !== null &&
 		"code" in value.error &&
 		typeof value.error.code === "string" &&
+		Object.hasOwn(DOCUMENT_CONVERSION_ERROR_CODES, value.error.code) &&
 		"message" in value.error &&
 		typeof value.error.message === "string"
 	);
