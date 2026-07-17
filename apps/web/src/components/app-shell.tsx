@@ -1,5 +1,6 @@
 import { isUserRole } from "@MindBridge/auth/permissions";
 import { Button } from "@MindBridge/ui/components/button";
+import { Link } from "@tanstack/react-router";
 import { LayoutDashboard, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -30,13 +31,13 @@ export default function AppShell({
 					<span className="font-semibold text-lg">MindBridge</span>
 				</div>
 				<nav aria-label="Điều hướng chính" className="p-3">
-					<a
+					<Link
 						className="flex items-center gap-3 rounded-md bg-accent px-3 py-2 font-medium text-sm"
-						href="/dashboard"
+						to="/dashboard"
 					>
 						<LayoutDashboard aria-hidden="true" data-icon="inline-start" />
 						Tổng quan
-					</a>
+					</Link>
 				</nav>
 			</aside>
 			<div className="min-w-0">
