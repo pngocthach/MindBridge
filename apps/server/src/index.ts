@@ -13,8 +13,20 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { createContext } from "./context";
+import { LessonGenerationService } from "./service/content-generation/service";
 import { LocalPythonDocumentConverter } from "./service/document-ingestion/converter";
 import { DocumentIngestionService } from "./service/document-ingestion/service";
+
+const lessonGenerationService =
+	env.OPENAI_COMPATIBLE_API_KEY &&
+	env.OPENAI_COMPATIBLE_BASE_URL &&
+	env.OPENAI_COMPATIBLE_MODEL
+		? new LessonGenerationService({
+				apiKey: env.OPENAI_COMPATIBLE_API_KEY,
+				baseUrl: env.OPENAI_COMPATIBLE_BASE_URL,
+				model: env.OPENAI_COMPATIBLE_MODEL,
+			})
+		: new LessonGenerationService();
 
 const app = new Hono();
 const documentIngestionService = new DocumentIngestionService(
@@ -70,6 +82,7 @@ export const rpcHandler = new RPCHandler(appRouter, {
 
 app.use("/*", async (c, next) => {
 	const context = await createContext({
+		contentGeneration: lessonGenerationService,
 		context: c,
 		documentIngestion: documentIngestionService,
 	});

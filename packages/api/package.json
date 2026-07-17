@@ -17,6 +17,7 @@
 		"@MindBridge/db": "workspace:*",
 		"@MindBridge/env": "workspace:*",
 		"@orpc/client": "catalog:",
+		"@orpc/contract": "^1.14.8",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
 		"@orpc/zod": "catalog:",

@@ -10,6 +10,9 @@ export const env = createEnv({
 		BETTER_AUTH_URL: z.url(),
 		CORS_ORIGIN: z.url(),
 		DATABASE_URL: z.string().min(1),
+		OPENAI_COMPATIBLE_API_KEY: z.string().min(1).optional(),
+		OPENAI_COMPATIBLE_BASE_URL: z.url().optional(),
+		OPENAI_COMPATIBLE_MODEL: z.string().min(1).optional(),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
 			.default("development"),
