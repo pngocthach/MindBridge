@@ -6,12 +6,14 @@ import type {
 import { db } from "@MindBridge/db";
 import {
 	contentGeneration,
+	contentSkill,
 	contentSourceReference,
 	contentVersion,
 	learningContent,
 	sourceChunk,
 	sourceDocument,
 } from "@MindBridge/db/schema/content";
+import { skill } from "@MindBridge/db/schema/learning";
 import { ClientRegistry } from "@boundaryml/baml";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
@@ -175,6 +177,25 @@ export class LessonGenerationService implements ContentGenerationPort {
 						createdVersion,
 						"Không thể lưu phiên bản học liệu.",
 					);
+					const requestedSkillIds = [...new Set(input.metadata.skillIds)];
+					if (requestedSkillIds.length > 0) {
+						const validSkills = await tx
+							.select({ id: skill.id })
+							.from(skill)
+							.where(inArray(skill.id, requestedSkillIds));
+						if (validSkills.length > 0) {
+							await tx.insert(contentSkill).values(
+								validSkills.map(({ id }, index) => ({
+									contentVersionId: version.id,
+									coverage:
+										index === 0
+											? ("primary" as const)
+											: ("supporting" as const),
+									skillId: id,
+								})),
+							);
+						}
+					}
 
 					const uniqueReferences = new Map<
 						string,
