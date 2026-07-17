@@ -7,5 +7,6 @@ export default defineConfig({
 			"@": fileURLToPath(new URL("./apps/web/src", import.meta.url)),
 		},
 		exclude: [...configDefaults.exclude, "**/dist/**"],
+		setupFiles: ["./vitest.setup.ts"],
 	},
 });
