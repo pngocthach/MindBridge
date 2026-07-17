@@ -3,6 +3,7 @@ import type { RouterClient } from "@orpc/server";
 import { protectedProcedure, publicProcedure } from "../index";
 import { contentWorkflowRouter } from "./content-workflow";
 import { masteryRouter } from "./mastery";
+import { recommendationRouter } from "./recommendation";
 import { sourceDocumentRouter } from "./source-documents";
 import { tutorRouter } from "./tutor";
 
@@ -14,6 +15,7 @@ export const appRouter = {
 		message: "This is private",
 		user: context.session?.user,
 	})),
+	recommendation: recommendationRouter,
 	sourceDocuments: sourceDocumentRouter,
 	tutor: tutorRouter,
 };
