@@ -2,6 +2,7 @@ import type {
 	DocumentIngestionPort,
 	IngestDocumentInput,
 	IngestDocumentResult,
+	IngestTextInput,
 } from "@MindBridge/api";
 import { db, sourceChunk, sourceDocument } from "@MindBridge/db";
 import {
@@ -71,6 +72,51 @@ export class DocumentIngestionService implements DocumentIngestionPort {
 			chunkCount: chunks.length,
 			documentId: document.id,
 			preview: convertedDocument.markdown.slice(0, 500),
+			type: "success",
+		};
+	}
+
+	async ingestText({
+		text,
+		uploadedBy,
+	}: IngestTextInput): Promise<IngestDocumentResult> {
+		if (!text.trim()) {
+			return {
+				message: "No readable text was provided.",
+				type: "conversion_error",
+			};
+		}
+
+		const chunks = splitSourceText(text);
+		const document = await db.transaction(async (transaction) => {
+			const [source] = await transaction
+				.insert(sourceDocument)
+				.values({
+					extractionStatus: "completed",
+					rawText: text,
+					sourceType: "paste",
+					uploadedBy,
+				})
+				.returning({ id: sourceDocument.id });
+
+			if (!source) {
+				throw new Error("Source document insert did not return an ID.");
+			}
+
+			await transaction.insert(sourceChunk).values(
+				chunks.map((chunk) => ({
+					...chunk,
+					documentId: source.id,
+				})),
+			);
+
+			return source;
+		});
+
+		return {
+			chunkCount: chunks.length,
+			documentId: document.id,
+			preview: text.slice(0, 500),
 			type: "success",
 		};
 	}

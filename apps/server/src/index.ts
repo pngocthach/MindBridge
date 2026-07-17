@@ -14,6 +14,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { createContext } from "./context";
 import { LessonGenerationService } from "./service/content-generation/service";
+import { CourseCatalogService } from "./service/course-catalog/service";
 import { LocalPythonDocumentConverter } from "./service/document-ingestion/converter";
 import { DocumentIngestionService } from "./service/document-ingestion/service";
 
@@ -27,6 +28,8 @@ const lessonGenerationService =
 				model: env.OPENAI_COMPATIBLE_MODEL,
 			})
 		: new LessonGenerationService();
+
+const courseCatalogService = new CourseCatalogService();
 
 const app = new Hono();
 const documentIngestionService = new DocumentIngestionService(
@@ -83,6 +86,7 @@ export const rpcHandler = new RPCHandler(appRouter, {
 app.use("/*", async (c, next) => {
 	const context = await createContext({
 		contentGeneration: lessonGenerationService,
+		courseCatalog: courseCatalogService,
 		context: c,
 		documentIngestion: documentIngestionService,
 	});

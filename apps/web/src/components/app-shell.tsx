@@ -1,7 +1,7 @@
 import { isUserRole } from "@MindBridge/auth/permissions";
 import { Button } from "@MindBridge/ui/components/button";
 import { Link } from "@tanstack/react-router";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { BookOpen, LayoutDashboard, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 
 const roleLabels = {
@@ -38,6 +38,15 @@ export default function AppShell({
 						<LayoutDashboard aria-hidden="true" data-icon="inline-start" />
 						Tổng quan
 					</Link>
+					{(userRole === "admin" || userRole === "editor") && (
+						<Link
+							className="mt-1 flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm hover:bg-accent"
+							to="/content-studio"
+						>
+							<BookOpen aria-hidden="true" data-icon="inline-start" />
+							Content Studio
+						</Link>
+					)}
 				</nav>
 			</aside>
 			<div className="min-w-0">
