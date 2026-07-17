@@ -16,7 +16,14 @@ import {
 import { Textarea } from "@MindBridge/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Send, ShieldAlert, Sparkles } from "lucide-react";
+import {
+	BookOpen,
+	CheckCircle2,
+	Clock3,
+	Send,
+	ShieldAlert,
+	Sparkles,
+} from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import Loader from "@/components/loader";
@@ -85,20 +92,90 @@ function RouteComponent() {
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Xin chào, {session.data?.user.name}</CardTitle>
-				<CardDescription>
-					Tổng quan cá nhân của bạn sẽ được cập nhật tại đây.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<p className="text-muted-foreground text-sm">
-					{privateData.data.message}
-				</p>
-			</CardContent>
-			<TutorChat />
-		</Card>
+		<section aria-labelledby="course-dashboard-title" className="space-y-6">
+			<header className="space-y-3">
+				<div className="flex items-center gap-2 font-medium text-primary text-xs uppercase tracking-widest">
+					<BookOpen aria-hidden="true" className="size-4" />
+					Khóa học đang học
+				</div>
+				<div className="flex flex-wrap items-end justify-between gap-4">
+					<div>
+						<h1
+							className="font-semibold text-3xl tracking-tight"
+							id="course-dashboard-title"
+						>
+							Xin chào, {session.data?.user.name}
+						</h1>
+						<p className="mt-2 text-muted-foreground text-sm">
+							Tiếp tục bài học của bạn và hỏi trợ giảng bất cứ lúc nào.
+						</p>
+					</div>
+					<div className="flex items-center gap-2 text-muted-foreground text-xs">
+						<Clock3 aria-hidden="true" className="size-4" />
+						Khoảng 12 phút còn lại
+					</div>
+				</div>
+				<div
+					className="h-2 overflow-hidden rounded-full bg-muted"
+					role="progressbar"
+					aria-label="Tiến độ khóa học"
+					aria-valuemax={100}
+					aria-valuemin={0}
+					aria-valuenow={42}
+				>
+					<div className="h-full w-[42%] rounded-full bg-primary" />
+				</div>
+				<div className="flex justify-between text-muted-foreground text-xs">
+					<span>42% hoàn thành</span>
+					<span>Tuần 2 / 5</span>
+				</div>
+			</header>
+
+			<div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(22rem,0.7fr)]">
+				<Card className="overflow-hidden">
+					<div className="bg-primary px-6 py-8 text-primary-foreground">
+						<p className="text-primary-foreground/75 text-xs uppercase tracking-widest">
+							Bài 2 · Nền tảng
+						</p>
+						<h2 className="mt-2 font-semibold text-2xl">
+							{lessonContext.title}
+						</h2>
+						<p className="mt-2 max-w-2xl text-primary-foreground/80 text-sm">
+							{privateData.data.message}
+						</p>
+					</div>
+					<CardHeader>
+						<CardTitle>Nội dung bài học</CardTitle>
+						<CardDescription>
+							Đọc phần tóm tắt, sau đó trao đổi với trợ giảng để kiểm tra hiểu
+							bài.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-5">
+						<p className="text-sm leading-7">{lessonContext.content}</p>
+						<div className="grid gap-3 sm:grid-cols-2">
+							<div className="border bg-muted/30 p-4">
+								<p className="font-medium text-sm">Mục tiêu bài học</p>
+								<p className="mt-1 text-muted-foreground text-xs">
+									Nhận biết vai trò của tử số, mẫu số và cách cộng phân số.
+								</p>
+							</div>
+							<div className="border bg-muted/30 p-4">
+								<p className="font-medium text-sm">Trạng thái</p>
+								<p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs">
+									<CheckCircle2
+										aria-hidden="true"
+										className="size-3 text-emerald-600"
+									/>{" "}
+									Đang học
+								</p>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+				<TutorChat />
+			</div>
+		</section>
 	);
 }
 
@@ -141,14 +218,14 @@ function TutorChat() {
 	};
 
 	return (
-		<section aria-labelledby="tutor-title" className="border-t pt-4">
-			<CardHeader>
+		<Card className="flex min-h-[560px] flex-col lg:sticky lg:top-6">
+			<CardHeader className="border-b pb-4">
 				<div className="flex items-center gap-2">
 					<Sparkles aria-hidden="true" className="size-4" />
 					<CardTitle id="tutor-title">Trợ giảng AI</CardTitle>
 				</div>
-				<CardDescription>
-					Đang hỗ trợ bài: <strong>{lessonContext.title}</strong>
+				<CardDescription className="line-clamp-1">
+					Đang hỗ trợ: <strong>{lessonContext.title}</strong>
 				</CardDescription>
 				<div
 					className="mt-2 flex gap-2 border border-amber-500/40 bg-amber-500/10 p-3 text-amber-950 text-xs dark:text-amber-100"
@@ -162,8 +239,8 @@ function TutorChat() {
 				</div>
 			</CardHeader>
 
-			<CardContent>
-				<div aria-live="polite" className="space-y-3" role="log">
+			<CardContent className="min-h-0 flex-1 overflow-y-auto pt-4">
+				<div aria-live="polite" className="space-y-4" role="log">
 					{messages.length === 0 ? (
 						<p className="border border-dashed p-4 text-muted-foreground">
 							Hãy hỏi về khái niệm hoặc bước bạn đang vướng. Trợ giảng sẽ gợi ý
@@ -172,33 +249,35 @@ function TutorChat() {
 					) : null}
 					{messages.map((message) =>
 						message.role === "learner" ? (
-							<div
-								className="ml-auto max-w-[85%] bg-primary p-3 text-primary-foreground"
-								key={message.id}
-							>
-								<p className="font-medium">Bạn</p>
-								<p className="mt-1">{message.content}</p>
+							<div className="flex justify-end" key={message.id}>
+								<div className="max-w-[88%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground text-sm">
+									<p>{message.content}</p>
+								</div>
 							</div>
 						) : (
-							<div
-								className="max-w-[90%] border bg-muted/40 p-3"
-								key={message.id}
-							>
-								<p className="font-medium">Trợ giảng AI</p>
-								<p className="mt-2">{message.content.introduction}</p>
-								<ol className="mt-3 space-y-3">
-									{message.content.steps.map((step) => (
-										<li key={step.title}>
-											<p className="font-medium">{step.title}</p>
-											<p className="mt-1 text-muted-foreground">
-												{step.content}
-											</p>
-										</li>
-									))}
-								</ol>
-								<p className="mt-3 border-t pt-3 font-medium">
-									{message.content.followUpQuestion}
-								</p>
+							<div className="flex gap-2" key={message.id}>
+								<div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+									<Sparkles aria-hidden="true" className="size-4" />
+								</div>
+								<div className="max-w-[90%] rounded-2xl rounded-bl-sm border bg-muted/40 px-4 py-3 text-sm">
+									<p className="font-medium text-xs">Trợ giảng AI</p>
+									<p className="mt-2 leading-6">
+										{message.content.introduction}
+									</p>
+									<ol className="mt-3 space-y-3">
+										{message.content.steps.map((step) => (
+											<li key={step.title}>
+												<p className="font-medium">{step.title}</p>
+												<p className="mt-1 text-muted-foreground text-xs leading-5">
+													{step.content}
+												</p>
+											</li>
+										))}
+									</ol>
+									<p className="mt-3 border-t pt-3 font-medium text-xs">
+										{message.content.followUpQuestion}
+									</p>
+								</div>
 							</div>
 						),
 					)}
@@ -215,13 +294,10 @@ function TutorChat() {
 				</div>
 			</CardContent>
 
-			<CardFooter>
+			<CardFooter className="border-t bg-background pt-4">
 				<form className="flex w-full items-end gap-2" onSubmit={handleSubmit}>
 					<div className="flex-1">
-						<label
-							className="mb-1 block font-medium text-xs"
-							htmlFor="tutor-question"
-						>
+						<label className="sr-only" htmlFor="tutor-question">
 							Câu hỏi của bạn
 						</label>
 						<Textarea
@@ -240,6 +316,6 @@ function TutorChat() {
 					</Button>
 				</form>
 			</CardFooter>
-		</section>
+		</Card>
 	);
 }
