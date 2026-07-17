@@ -3,6 +3,7 @@ import type { RouterClient } from "@orpc/server";
 import { protectedProcedure, publicProcedure } from "../index";
 import { contentWorkflowRouter } from "./content-workflow";
 import { sourceDocumentRouter } from "./source-documents";
+import { tutorRouter } from "./tutor";
 
 export const appRouter = {
 	contentWorkflow: contentWorkflowRouter,
@@ -12,6 +13,7 @@ export const appRouter = {
 		user: context.session?.user,
 	})),
 	sourceDocuments: sourceDocumentRouter,
+	tutor: tutorRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;
