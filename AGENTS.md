@@ -121,6 +121,7 @@ git switch -c <type>/<issue-number>-<short-slug>
 ```
 
 - Never commit, push, or merge before the user has reviewed the changes and explicitly approved it in this conversation.
+- Before merging any pull request, require at least one review comment from GitHub Copilot on that pull request.
 
 - Name branches `feat/`, `fix/`, or `chore/`; for example, `feat/11-auth-rbac`.
 - Keep each branch limited to its issue; do not mix unrelated refactors or tasks.
