@@ -1,8 +1,15 @@
 import { isUserRole } from "@MindBridge/auth/permissions";
 import { Button } from "@MindBridge/ui/components/button";
 import { Link } from "@tanstack/react-router";
-import { BookOpen, LayoutDashboard, LogOut } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+	BookOpenCheck,
+	FileStack,
+	LayoutDashboard,
+	LogOut,
+	ShieldCheck,
+	Users,
+} from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 
 const roleLabels = {
 	admin: "Quản trị viên",
@@ -10,6 +17,36 @@ const roleLabels = {
 	learner: "Học viên",
 	teacher: "Giáo viên",
 } as const;
+
+type NavItem = {
+	icon: ComponentType<{ "aria-hidden"?: boolean; "data-icon"?: string }>;
+	label: string;
+	roles: readonly string[];
+	to: string;
+};
+
+const navItems: readonly NavItem[] = [
+	{
+		icon: LayoutDashboard,
+		label: "Tổng quan",
+		roles: ["learner", "teacher", "editor", "admin"],
+		to: "/dashboard",
+	},
+	{
+		icon: BookOpenCheck,
+		label: "Lộ trình học",
+		roles: ["learner"],
+		to: "/learn",
+	},
+	{ icon: Users, label: "Lớp của tôi", roles: ["teacher"], to: "/teacher" },
+	{ icon: ShieldCheck, label: "Admin Console", roles: ["admin"], to: "/admin" },
+	{
+		icon: FileStack,
+		label: "Content Studio",
+		roles: ["admin", "editor"],
+		to: "/content-studio",
+	},
+];
 
 type AppShellProps = {
 	children: ReactNode;
@@ -30,23 +67,20 @@ export default function AppShell({
 				<div className="flex h-16 items-center border-b px-5">
 					<span className="font-semibold text-lg">MindBridge</span>
 				</div>
-				<nav aria-label="Điều hướng chính" className="p-3">
-					<Link
-						className="flex items-center gap-3 rounded-md bg-accent px-3 py-2 font-medium text-sm"
-						to="/dashboard"
-					>
-						<LayoutDashboard aria-hidden="true" data-icon="inline-start" />
-						Tổng quan
-					</Link>
-					{(userRole === "admin" || userRole === "editor") && (
-						<Link
-							className="mt-1 flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm hover:bg-accent"
-							to="/content-studio"
-						>
-							<BookOpen aria-hidden="true" data-icon="inline-start" />
-							Content Studio
-						</Link>
-					)}
+				<nav aria-label="Điều hướng chính" className="space-y-1 p-3">
+					{navItems
+						.filter((item) => item.roles.includes(userRole))
+						.map((item) => (
+							<Link
+								activeProps={{ className: "bg-accent" }}
+								className="flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm hover:bg-accent/60"
+								key={item.to}
+								to={item.to}
+							>
+								<item.icon aria-hidden={true} data-icon="inline-start" />
+								{item.label}
+							</Link>
+						))}
 				</nav>
 			</aside>
 			<div className="min-w-0">
