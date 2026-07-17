@@ -28,7 +28,34 @@ export interface DocumentIngestionPort {
 	ingest(input: IngestDocumentInput): Promise<IngestDocumentResult>;
 }
 
+export type ContentGenerationEvent =
+	| { generationId: string; type: "started" }
+	| { draft: Record<string, unknown>; type: "partial" }
+	| {
+			contentId: string;
+			contentVersionId: string;
+			generationId: string;
+			type: "completed";
+	  }
+	| { generationId: string; message: string; type: "failed" };
+
+export interface GenerateLessonDraftInput {
+	canUseAnySource: boolean;
+	chunkIds?: string[];
+	courseId: string;
+	documentId: string;
+	requestedBy: string;
+	signal: AbortSignal;
+}
+
+export interface ContentGenerationPort {
+	generateLessonDraft(
+		input: GenerateLessonDraftInput,
+	): AsyncGenerator<ContentGenerationEvent>;
+}
+
 export interface ApiContext {
+	contentGeneration: ContentGenerationPort;
 	documentIngestion: DocumentIngestionPort;
 	session: {
 		user: {
@@ -48,6 +75,7 @@ const requireAuth = o.middleware(async ({ context, next }) => {
 	}
 	return next({
 		context: {
+			contentGeneration: context.contentGeneration,
 			documentIngestion: context.documentIngestion,
 			session: context.session,
 		},
@@ -65,6 +93,7 @@ export const permissionProcedure = (permission: Permission) =>
 
 		return next({
 			context: {
+				contentGeneration: context.contentGeneration,
 				documentIngestion: context.documentIngestion,
 				role,
 				session: context.session,
