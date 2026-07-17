@@ -1,6 +1,7 @@
 import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
+import { contentGenerationRouter } from "./content-generation";
 import { sourceDocumentRouter } from "./source-documents";
 
 export const appRouter = {
@@ -9,6 +10,7 @@ export const appRouter = {
 		message: "This is private",
 		user: context.session?.user,
 	})),
+	contentGeneration: contentGenerationRouter,
 	sourceDocuments: sourceDocumentRouter,
 };
 export type AppRouter = typeof appRouter;
