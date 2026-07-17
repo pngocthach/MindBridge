@@ -163,7 +163,10 @@ export class LessonGenerationService implements ContentGenerationPort {
 							body: draft,
 							contentId: content.id,
 							createdBy: input.requestedBy,
-							metadata: { sourceDocumentId: input.documentId },
+							metadata: {
+								...input.metadata,
+								sourceDocumentId: input.documentId,
+							},
 							status: "draft",
 							versionNumber: 1,
 						})
