@@ -97,7 +97,7 @@ const metadataFor = (candidate: ContentCandidate) => {
 	return parsed.success ? parsed.data : {};
 };
 
-const selectContent = (
+export const selectContent = (
 	candidates: readonly ContentCandidate[],
 	skillState: SkillState,
 	usedContentIds: ReadonlySet<string>,
@@ -167,7 +167,7 @@ const explainRecommendation = (plan: RecommendationPlan): string => {
 	return `${targetStatus} Các kiến thức tiền đề đã đạt yêu cầu, nên đây là bước học tiếp theo phù hợp.`;
 };
 
-const buildPlans = (
+export const buildPlans = (
 	masteryRows: ReadonlyArray<{
 		evidenceCount: number;
 		score: number;
