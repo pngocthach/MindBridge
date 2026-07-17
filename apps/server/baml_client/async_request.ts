@@ -20,7 +20,8 @@ $ pnpm add @boundaryml/baml
 
 import type { BamlRuntime, BamlCtxManager, Image, Audio, Pdf, Video, FunctionLog } from
 "@boundaryml/baml"
-import { toBamlError, HTTPRequest, ClientRegistry } from "@boundaryml/baml"
+import { toBamlError, ClientRegistry } from "@boundaryml/baml"
+import type { HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
 import type {Exercise, ExerciseDifficulty, LearningObjective, LessonDraft, QuizQuestion, SourceChunk} from "./types"

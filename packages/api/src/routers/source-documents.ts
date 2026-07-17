@@ -9,6 +9,10 @@ const documentUploadInput = z.object({
 	file: z.instanceof(File),
 });
 
+const pastedTextInput = z.object({
+	text: z.string().trim().min(1).max(200_000),
+});
+
 export const sourceDocumentRouter = {
 	upload: protectedProcedure
 		.input(documentUploadInput)
@@ -37,4 +41,12 @@ export const sourceDocumentRouter = {
 
 			return result;
 		}),
+	paste: protectedProcedure
+		.input(pastedTextInput)
+		.handler(({ context, input }) =>
+			context.documentIngestion.ingestText({
+				text: input.text,
+				uploadedBy: context.session.user.id,
+			}),
+		),
 };
