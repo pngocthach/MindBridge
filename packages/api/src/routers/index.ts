@@ -1,9 +1,11 @@
 import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
+import { contentWorkflowRouter } from "./content-workflow";
 import { sourceDocumentRouter } from "./source-documents";
 
 export const appRouter = {
+	contentWorkflow: contentWorkflowRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),
 	privateData: protectedProcedure.handler(({ context }) => ({
 		message: "This is private",
