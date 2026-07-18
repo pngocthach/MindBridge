@@ -16,7 +16,7 @@ import {
 import { Input } from "@MindBridge/ui/components/input";
 import { Textarea } from "@MindBridge/ui/components/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Network } from "lucide-react";
+import { ArrowRight, Network, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -60,6 +60,7 @@ const toMutationValues = (values: SkillFormValues) => ({
 export default function SkillGraphManager() {
 	const queryClient = useQueryClient();
 	const graph = useQuery(orpc.skills.list.queryOptions());
+	const [skillSearch, setSkillSearch] = useState("");
 	const [selectedSkillId, setSelectedSkillId] = useState<string>();
 	const [createValues, setCreateValues] = useState(emptyForm);
 	const [editValues, setEditValues] = useState(emptyForm);
@@ -158,18 +159,33 @@ export default function SkillGraphManager() {
 				(prerequisite) => prerequisite.id === skill.id,
 			),
 	);
+	const normalizedSkillSearch = skillSearch.trim().toLowerCase();
+	const filteredSkills = (graph.data?.skills ?? []).filter((skill) =>
+		`${skill.name} ${skill.slug}`.toLowerCase().includes(normalizedSkillSearch),
+	);
 
 	return (
-		<section aria-labelledby="skill-graph-title" className="space-y-4">
-			<header className="flex items-center gap-2">
-				<Network aria-hidden="true" className="size-5 text-primary" />
-				<div>
-					<h2 className="font-semibold text-xl" id="skill-graph-title">
-						Đồ thị kỹ năng
-					</h2>
-					<p className="text-muted-foreground text-sm">
-						Quản lý kỹ năng và quan hệ tiên quyết không tạo chu trình.
+		<section
+			aria-labelledby="skill-graph-title"
+			className="space-y-4 rounded-2xl border border-blue-100 bg-blue-50/30 p-4 md:p-5"
+		>
+			<header className="flex flex-wrap items-center justify-between gap-4">
+				<div className="flex items-center gap-2">
+					<Network aria-hidden="true" className="size-5 text-primary" />
+					<div>
+						<h2 className="font-semibold text-xl" id="skill-graph-title">
+							Đồ thị kỹ năng
+						</h2>
+						<p className="text-muted-foreground text-sm">
+							Quản lý kỹ năng và quan hệ tiên quyết không tạo chu trình.
+						</p>
+					</div>
+				</div>
+				<div className="rounded-xl bg-white px-4 py-2 text-right shadow-sm">
+					<p className="font-bold text-primary text-xl">
+						{graph.data?.skills.length ?? 0}
 					</p>
+					<p className="text-muted-foreground text-[11px]">kỹ năng</p>
 				</div>
 			</header>
 
@@ -198,14 +214,35 @@ export default function SkillGraphManager() {
 						</CardFooter>
 					</Card>
 
-					<section aria-label="Danh sách kỹ năng" className="space-y-2">
+					<section
+						aria-label="Danh sách kỹ năng"
+						className="space-y-2 rounded-2xl border bg-white p-3"
+					>
+						<Input
+							aria-label="Tìm kỹ năng"
+							onChange={(event) => setSkillSearch(event.target.value)}
+							placeholder="Tìm tên hoặc mã kỹ năng…"
+							value={skillSearch}
+						/>
 						{graph.isPending ? (
 							<p className="text-muted-foreground text-sm">Đang tải kỹ năng…</p>
 						) : null}
 						{graph.isError ? (
-							<p className="text-destructive text-sm" role="alert">
-								Không thể tải đồ thị kỹ năng.
-							</p>
+							<div
+								className="flex items-center justify-between gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm"
+								role="alert"
+							>
+								<span>Không thể tải đồ thị kỹ năng.</span>
+								<Button
+									onClick={() => void graph.refetch()}
+									size="sm"
+									type="button"
+									variant="outline"
+								>
+									<RefreshCw aria-hidden="true" />
+									Thử lại
+								</Button>
+							</div>
 						) : null}
 						{graph.data?.skills.length === 0 ? (
 							<Empty>
@@ -217,10 +254,10 @@ export default function SkillGraphManager() {
 								</EmptyHeader>
 							</Empty>
 						) : null}
-						{graph.data?.skills.map((skill) => (
+						{filteredSkills.map((skill) => (
 							<button
 								aria-pressed={selectedSkillId === skill.id}
-								className="w-full rounded-lg border bg-card p-3 text-left hover:bg-muted/50 aria-pressed:border-primary aria-pressed:bg-primary/5"
+								className="w-full rounded-xl border bg-card p-3 text-left hover:border-primary/30 hover:bg-blue-50 aria-pressed:border-primary aria-pressed:bg-blue-50 aria-pressed:ring-2 aria-pressed:ring-primary/15"
 								key={skill.id}
 								onClick={() => setSelectedSkillId(skill.id)}
 								type="button"
@@ -232,6 +269,11 @@ export default function SkillGraphManager() {
 								</span>
 							</button>
 						))}
+						{normalizedSkillSearch && filteredSkills.length === 0 ? (
+							<p className="p-4 text-center text-muted-foreground text-sm">
+								Không tìm thấy kỹ năng phù hợp.
+							</p>
+						) : null}
 					</section>
 				</div>
 
