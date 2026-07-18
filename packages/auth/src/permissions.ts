@@ -30,6 +30,7 @@ const rolePermissions: Record<
 		"class:read",
 		"assignment:create",
 		"source:upload",
+		"content:create",
 	],
 	editor: [
 		"source:upload",

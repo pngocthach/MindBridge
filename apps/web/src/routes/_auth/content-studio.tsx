@@ -11,7 +11,7 @@ function ContentStudioPage() {
 	const { session } = Route.useRouteContext();
 	return (
 		<div className="space-y-10">
-			<ContentStudio />
+			<ContentStudio canAssign={session.data?.user.role === "teacher"} />
 			{session.data?.user.role === "admin" ? <CourseCurriculumManager /> : null}
 		</div>
 	);

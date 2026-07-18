@@ -74,7 +74,7 @@ const navItems: readonly NavItem[] = [
 		group: "content",
 		icon: FileStack,
 		label: "Content Studio",
-		roles: ["admin", "editor"],
+		roles: ["admin", "editor", "teacher"],
 		to: "/content-studio",
 	},
 ];

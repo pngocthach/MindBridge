@@ -56,6 +56,13 @@ type CourseOption = {
 	title: string;
 };
 
+type ClassroomOption = {
+	courseId: string;
+	courseTitle: string;
+	id: string;
+	name: string;
+};
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
 	typeof value === "object" && value !== null
 		? (value as Record<string, unknown>)
@@ -493,7 +500,11 @@ export function StructuredGenerationProgress({
 	);
 }
 
-export default function ContentStudio() {
+export default function ContentStudio({
+	canAssign = false,
+}: {
+	canAssign?: boolean;
+}) {
 	const [courseSearch, setCourseSearch] = useState("");
 	const [isCourseListOpen, setIsCourseListOpen] = useState(false);
 	const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(
@@ -509,6 +520,13 @@ export default function ContentStudio() {
 	const [sourceError, setSourceError] = useState("");
 	const [source, setSource] = useState<SourceDocument | null>(null);
 	const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
+	const [generatedContent, setGeneratedContent] = useState<{
+		contentVersionId: string;
+	} | null>(null);
+	const [selectedClassroomId, setSelectedClassroomId] = useState("");
+	const [assignmentDueAt, setAssignmentDueAt] = useState("");
+	const [assignmentError, setAssignmentError] = useState("");
+	const [assignmentStatus, setAssignmentStatus] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isGenerationComplete, setIsGenerationComplete] = useState(false);
 	const [generationStatus, setGenerationStatus] = useState("");
@@ -539,6 +557,27 @@ export default function ContentStudio() {
 		orpc.courses.search.queryOptions({ input: { query: courseSearch } }),
 	);
 
+	const classrooms = useQuery(
+		orpc.teacher.listClassrooms.queryOptions({
+			enabled: canAssign,
+			input: {},
+		}),
+	);
+
+	const publishAndAssign = useMutation(
+		orpc.teacher.publishAndAssignGeneratedLesson.mutationOptions({
+			onSuccess: () => {
+				setAssignmentError("");
+				setAssignmentStatus(
+					"Đã xuất bản, thêm vào khóa học và giao bài cho lớp.",
+				);
+			},
+			onError: (error) => {
+				setAssignmentError(error.message);
+			},
+		}),
+	);
+
 	const sourceDetail = useQuery(
 		orpc.sourceDocuments.detail.queryOptions({
 			enabled: Boolean(source && isGenerationComplete),
@@ -559,6 +598,10 @@ export default function ContentStudio() {
 		}
 
 		setDraft(null);
+		setGeneratedContent(null);
+		setSelectedClassroomId("");
+		setAssignmentError("");
+		setAssignmentStatus("");
 		setIsGenerationComplete(false);
 		setIsGenerating(true);
 		setGenerationError("");
@@ -588,6 +631,9 @@ export default function ContentStudio() {
 				if (event.type === "completed") {
 					receivedTerminalEvent = true;
 					setDraft(event.draft);
+					setGeneratedContent({
+						contentVersionId: event.contentVersionId,
+					});
 					setGenerationStatus("Bản nháp đã sẵn sàng để review.");
 					setIsGenerationComplete(true);
 				}
@@ -728,6 +774,7 @@ export default function ContentStudio() {
 												setGradeLevel(String(course.gradeLevel));
 												setIsCourseListOpen(false);
 												setSelectedCourse(course);
+												setSelectedClassroomId("");
 											}}
 											role="option"
 											type="button"
@@ -923,6 +970,107 @@ export default function ContentStudio() {
 								<p className="text-muted-foreground text-sm">
 									Bản xem trước sẽ mở khi AI hoàn tất cấu trúc bài học.
 								</p>
+							) : null}
+							{canAssign &&
+							isGenerationComplete &&
+							generatedContent &&
+							draft ? (
+								<section className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+									<div>
+										<h3 className="font-semibold">Giao ngay cho lớp</h3>
+										<p className="mt-1 text-muted-foreground text-sm">
+											Xác nhận lớp và hạn nộp. Hệ thống sẽ tự xuất bản bài học,
+											thêm vào khóa học và giao cho học viên.
+										</p>
+									</div>
+									<div className="grid gap-4 sm:grid-cols-2">
+										<div className="space-y-2">
+											<Label htmlFor="assignment-classroom">Lớp học</Label>
+											<select
+												className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+												disabled={publishAndAssign.isPending}
+												id="assignment-classroom"
+												onChange={(event) =>
+													setSelectedClassroomId(event.target.value)
+												}
+												value={selectedClassroomId}
+											>
+												<option value="">Chọn lớp để giao…</option>
+												{classrooms.data
+													?.filter(
+														(classroom: ClassroomOption) =>
+															classroom.courseId === selectedCourse?.id,
+													)
+													.map((classroom: ClassroomOption) => (
+														<option key={classroom.id} value={classroom.id}>
+															{classroom.name} · {classroom.courseTitle}
+														</option>
+													))}
+											</select>
+											{classrooms.isError ? (
+												<p className="text-destructive text-sm" role="alert">
+													Không thể tải lớp học của bạn.
+												</p>
+											) : null}
+											{!classrooms.isPending &&
+											selectedCourse &&
+											(classrooms.data?.filter(
+												(classroom: ClassroomOption) =>
+													classroom.courseId === selectedCourse.id,
+											).length ?? 0) === 0 ? (
+												<p className="text-muted-foreground text-sm">
+													Bạn chưa có lớp nào cho khóa học này.
+												</p>
+											) : null}
+										</div>
+										<div className="space-y-2">
+											<Label htmlFor="assignment-due-date">
+												Hạn nộp (không bắt buộc)
+											</Label>
+											<Input
+												disabled={publishAndAssign.isPending}
+												id="assignment-due-date"
+												onChange={(event) =>
+													setAssignmentDueAt(event.target.value)
+												}
+												type="date"
+												value={assignmentDueAt}
+											/>
+										</div>
+									</div>
+									{assignmentError ? (
+										<p className="text-destructive text-sm" role="alert">
+											{assignmentError}
+										</p>
+									) : null}
+									{assignmentStatus ? (
+										<p className="text-emerald-700 text-sm" role="status">
+											{assignmentStatus}
+										</p>
+									) : null}
+									<Button
+										disabled={
+											!selectedClassroomId ||
+											publishAndAssign.isPending ||
+											Boolean(assignmentStatus)
+										}
+										onClick={() => {
+											setAssignmentError("");
+											publishAndAssign.mutate({
+												classroomId: selectedClassroomId,
+												contentVersionId: generatedContent.contentVersionId,
+												dueAt: assignmentDueAt
+													? new Date(`${assignmentDueAt}T23:59:59`)
+													: undefined,
+											});
+										}}
+										type="button"
+									>
+										{publishAndAssign.isPending
+											? "Đang giao bài…"
+											: "Xuất bản và giao cho lớp"}
+									</Button>
+								</section>
 							) : null}
 						</CardContent>
 					</Card>

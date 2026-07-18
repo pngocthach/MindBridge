@@ -135,19 +135,7 @@ describe.skipIf(!hasDatabase)("checkpoint demo flow", () => {
 			context: adminContext,
 		});
 		const createDraft = appRouter.contentWorkflow.createDraft.callable({
-			context: adminContext,
-		});
-		const submitForReview = appRouter.contentWorkflow.submitForReview.callable({
-			context: adminContext,
-		});
-		const approve = appRouter.contentWorkflow.approve.callable({
-			context: adminContext,
-		});
-		const publish = appRouter.contentWorkflow.publish.callable({
-			context: adminContext,
-		});
-		const addCurriculum = appRouter.courseCurriculum.add.callable({
-			context: adminContext,
+			context: teacherContext,
 		});
 		const createClassroom = appRouter.teacher.createClassroom.callable({
 			context: teacherContext,
@@ -155,7 +143,11 @@ describe.skipIf(!hasDatabase)("checkpoint demo flow", () => {
 		const addEnrollment = appRouter.teacher.addEnrollment.callable({
 			context: teacherContext,
 		});
-		const assignContent = appRouter.teacher.assignContent.callable({
+		const publishAndAssignGeneratedLesson =
+			appRouter.teacher.publishAndAssignGeneratedLesson.callable({
+				context: teacherContext,
+			});
+		const searchCourses = appRouter.courses.search.callable({
 			context: teacherContext,
 		});
 		const listCourses = appRouter.learner.listCourses.callable({
@@ -184,21 +176,6 @@ describe.skipIf(!hasDatabase)("checkpoint demo flow", () => {
 			title: `Checkpoint ${suffix}`,
 		});
 		createdCourseId = createdCourse.id;
-		const draft = await createDraft({
-			body: { sections: [{ content: "Checkpoint lesson" }] },
-			courseId: createdCourse.id,
-			kind: "lesson",
-			metadata: { difficulty: "beginner", gradeLevel: 6 },
-			title: "Checkpoint lesson",
-		});
-		await submitForReview({ contentVersionId: draft.version.id });
-		await approve({ contentVersionId: draft.version.id });
-		await publish({ contentVersionId: draft.version.id });
-		await addCurriculum({
-			contentId: draft.content.id,
-			courseId: createdCourse.id,
-		});
-
 		const createdClassroom = await createClassroom({
 			courseId: createdCourse.id,
 			name: `Checkpoint class ${suffix}`,
@@ -210,11 +187,23 @@ describe.skipIf(!hasDatabase)("checkpoint demo flow", () => {
 			classroomId: createdClassroom.id,
 			email: learnerEmail,
 		});
-		const assignment = await assignContent({
+		const visibleCourses = await searchCourses({ query: "Checkpoint" });
+		expect(visibleCourses.some(({ id }) => id === createdCourse.id)).toBe(true);
+
+		const draft = await createDraft({
+			body: { sections: [{ content: "Checkpoint lesson" }] },
+			courseId: createdCourse.id,
+			kind: "lesson",
+			metadata: { difficulty: "beginner", gradeLevel: 6 },
+			title: "Checkpoint lesson",
+		});
+		const publishedAssignment = await publishAndAssignGeneratedLesson({
 			classroomId: createdClassroom.id,
 			contentVersionId: draft.version.id,
 		});
-		expect(assignment?.id).toBeTypeOf("string");
+		expect(publishedAssignment.assignment.id).toBeTypeOf("string");
+
+		expect(publishedAssignment.publishedVersion.id).toBe(draft.version.id);
 
 		const learnerCourses = await listCourses();
 		expect(

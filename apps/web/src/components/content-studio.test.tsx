@@ -28,6 +28,14 @@ vi.mock("@/utils/orpc", () => ({
 				queryOptions: vi.fn(),
 			},
 		},
+		teacher: {
+			listClassrooms: {
+				queryOptions: vi.fn(),
+			},
+			publishAndAssignGeneratedLesson: {
+				mutationOptions: vi.fn(),
+			},
+		},
 		sourceDocuments: {
 			detail: {
 				queryOptions: vi.fn(),
