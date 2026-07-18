@@ -34,7 +34,7 @@ import { type FormEvent, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
-
+import LearnerProfilePanel from "@/components/learner-profile-panel";
 import Loader from "@/components/loader";
 import { orpc } from "@/utils/orpc";
 
@@ -265,11 +265,36 @@ function Dashboard() {
 }
 
 function LearnerDashboard({ learnerName }: { learnerName: string }) {
-	const courses = useQuery(orpc.learner.listCourses.queryOptions());
-	const assignments = useQuery(orpc.assignments.listInbox.queryOptions());
+	const profile = useQuery(orpc.learner.getProfile.queryOptions());
+	const hasProfile = profile.data !== undefined && profile.data !== null;
+	const courses = useQuery(
+		orpc.learner.listCourses.queryOptions({ enabled: hasProfile }),
+	);
+	const assignments = useQuery(
+		orpc.assignments.listInbox.queryOptions({ enabled: hasProfile }),
+	);
 	const [selectedClassroomId, setSelectedClassroomId] = useState<string>();
 	const [selectedContentId, setSelectedContentId] = useState<string>();
 
+	if (profile.isPending) {
+		return <Loader />;
+	}
+	if (profile.isError) {
+		return (
+			<section
+				className="border border-destructive/30 bg-destructive/10 p-6"
+				role="alert"
+			>
+				<h1 className="font-semibold text-lg">Không thể tải hồ sơ học tập</h1>
+				<p className="mt-1 text-muted-foreground text-sm">
+					Hãy tải lại trang hoặc thử lại sau ít phút.
+				</p>
+			</section>
+		);
+	}
+	if (profile.data === null) {
+		return <LearnerProfilePanel learnerName={learnerName} profile={null} />;
+	}
 	if (courses.isPending || assignments.isPending) {
 		return <Loader />;
 	}
@@ -309,6 +334,7 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 					Tiếp tục bài chưa hoàn thành và hỏi Milo bất cứ lúc nào.
 				</p>
 			</header>
+			<LearnerProfilePanel learnerName={learnerName} profile={profile.data} />
 			<AssignmentInbox
 				assignments={assignments.data ?? []}
 				isError={assignments.isError}

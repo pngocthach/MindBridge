@@ -286,6 +286,32 @@ export const recommendation = pgTable(
 	],
 );
 
+export const recommendationFeedback = pgTable(
+	"recommendation_feedback",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		recommendationId: uuid("recommendation_id")
+			.notNull()
+			.references(() => recommendation.id, { onDelete: "cascade" }),
+		learnerId: text("learner_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		helpful: boolean("helpful").notNull(),
+		note: text("note"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at")
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		unique("recommendation_feedback_recommendation_unique").on(
+			table.recommendationId,
+		),
+		index("recommendation_feedback_learner_idx").on(table.learnerId),
+	],
+);
+
 export const contentAssignment = pgTable(
 	"content_assignment",
 	{

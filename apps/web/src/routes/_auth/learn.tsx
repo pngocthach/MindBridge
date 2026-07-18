@@ -192,35 +192,10 @@ function LearnerPage() {
 							) : (
 								<ol className="space-y-3">
 									{recommendations.map((recommendation) => (
-										<li
-											className="flex gap-3 border bg-background p-4"
+										<RecommendationCard
 											key={recommendation.id}
-										>
-											<div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-xs">
-												{recommendation.rank}
-											</div>
-											<div className="min-w-0 flex-1">
-												<p className="font-medium">
-													{recommendation.contentTitle}
-												</p>
-												<p className="mt-1 text-muted-foreground text-xs">
-													Kỹ năng: {recommendation.targetSkillName}
-												</p>
-												<p className="mt-2 text-sm">
-													{recommendation.reasonVi}
-												</p>
-												<a
-													className="mt-3 inline-flex items-center font-medium text-primary text-xs underline-offset-4 hover:underline"
-													href="#quiz"
-												>
-													Mở khu vực luyện tập
-													<ArrowRight
-														aria-hidden="true"
-														className="ml-1 size-3"
-													/>
-												</a>
-											</div>
-										</li>
+											recommendation={recommendation}
+										/>
 									))}
 								</ol>
 							)}
@@ -253,6 +228,146 @@ function LearnerPage() {
 				</aside>
 			</div>
 		</section>
+	);
+}
+
+type LearningRecommendation = Awaited<
+	ReturnType<typeof orpc.recommendation.latest.call>
+>["recommendations"][number];
+
+const recommendationStatusLabels = {
+	accepted: "Đã chấp nhận",
+	active: "Mới",
+	dismissed: "Đã bỏ qua",
+	viewed: "Đã xem",
+} as const;
+
+function RecommendationCard({
+	recommendation,
+}: {
+	recommendation: LearningRecommendation;
+}) {
+	const queryClient = useQueryClient();
+	const refreshRecommendation = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.recommendation.latest.key(),
+		});
+	};
+	const updateStatus = useMutation(
+		orpc.recommendation.updateStatus.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await refreshRecommendation();
+				toast.success("Đã cập nhật đề xuất.");
+			},
+		}),
+	);
+	const submitFeedback = useMutation(
+		orpc.recommendation.submitFeedback.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await refreshRecommendation();
+				toast.success("Cảm ơn phản hồi của bạn.");
+			},
+		}),
+	);
+	const isResolved =
+		recommendation.status === "accepted" ||
+		recommendation.status === "dismissed";
+
+	return (
+		<li className="flex gap-3 border bg-background p-4">
+			<div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-xs">
+				{recommendation.rank}
+			</div>
+			<div className="min-w-0 flex-1">
+				<div className="flex flex-wrap items-start justify-between gap-2">
+					<p className="font-medium">{recommendation.contentTitle}</p>
+					<span className="border px-2 py-0.5 text-muted-foreground text-xs">
+						{recommendationStatusLabels[recommendation.status]}
+					</span>
+				</div>
+				<p className="mt-1 text-muted-foreground text-xs">
+					Kỹ năng: {recommendation.targetSkillName}
+				</p>
+				<p className="mt-2 text-sm">{recommendation.reasonVi}</p>
+				<div className="mt-3 flex flex-wrap items-center gap-2">
+					<a
+						className="inline-flex items-center font-medium text-primary text-xs underline-offset-4 hover:underline"
+						href="#quiz"
+					>
+						Mở khu vực luyện tập
+						<ArrowRight aria-hidden="true" className="ml-1 size-3" />
+					</a>
+					<Button
+						disabled={isResolved || updateStatus.isPending}
+						onClick={() =>
+							updateStatus.mutate({
+								recommendationId: recommendation.id,
+								status: "accepted",
+							})
+						}
+						size="sm"
+						type="button"
+					>
+						Chấp nhận
+					</Button>
+					<Button
+						disabled={isResolved || updateStatus.isPending}
+						onClick={() =>
+							updateStatus.mutate({
+								recommendationId: recommendation.id,
+								status: "dismissed",
+							})
+						}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						Bỏ qua
+					</Button>
+				</div>
+				<div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+					<span className="text-muted-foreground text-xs">
+						Đề xuất này có phù hợp không?
+					</span>
+					<Button
+						aria-pressed={recommendation.feedbackHelpful === true}
+						disabled={submitFeedback.isPending}
+						onClick={() =>
+							submitFeedback.mutate({
+								helpful: true,
+								recommendationId: recommendation.id,
+							})
+						}
+						size="sm"
+						type="button"
+						variant={
+							recommendation.feedbackHelpful === true ? "default" : "outline"
+						}
+					>
+						Hữu ích
+					</Button>
+					<Button
+						aria-pressed={recommendation.feedbackHelpful === false}
+						disabled={submitFeedback.isPending}
+						onClick={() =>
+							submitFeedback.mutate({
+								helpful: false,
+								recommendationId: recommendation.id,
+							})
+						}
+						size="sm"
+						type="button"
+						variant={
+							recommendation.feedbackHelpful === false ? "default" : "outline"
+						}
+					>
+						Chưa phù hợp
+					</Button>
+				</div>
+			</div>
+		</li>
 	);
 }
 

@@ -467,6 +467,9 @@ function FilterButton({ active, children, onClick }: FilterButtonProps) {
 type ContentVersion = Awaited<
 	ReturnType<typeof orpc.contentWorkflow.list.call>
 >[number];
+type AssessmentItem = Awaited<
+	ReturnType<typeof orpc.assessments.list.call>
+>[number];
 
 function ContentVersionCard({ version }: { version: ContentVersion }) {
 	const queryClient = useQueryClient();
@@ -644,6 +647,10 @@ function ContentVersionCard({ version }: { version: ContentVersion }) {
 					</pre>
 				)}
 			</CardContent>
+			<AssessmentEditor
+				contentVersionId={version.id}
+				enabled={version.kind === "quiz"}
+			/>
 			<CardFooter className="flex flex-wrap justify-end gap-2">
 				{renderDraftActions()}
 				{version.status !== "archived" && !isEditing ? (
@@ -667,6 +674,396 @@ function ContentVersionCard({ version }: { version: ContentVersion }) {
 				) : null}
 			</CardFooter>
 		</Card>
+	);
+}
+
+function AssessmentEditor({
+	contentVersionId,
+	enabled,
+}: {
+	contentVersionId: string;
+	enabled: boolean;
+}) {
+	const queryClient = useQueryClient();
+	const [prompt, setPrompt] = useState("");
+	const [explanation, setExplanation] = useState("");
+	const [itemType, setItemType] = useState<
+		"single_choice" | "multiple_choice" | "short_answer"
+	>("single_choice");
+	const [ordinal, setOrdinal] = useState(1);
+	const items = useQuery(
+		orpc.assessments.list.queryOptions({
+			enabled,
+			input: { contentVersionId },
+		}),
+	);
+	const refresh = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.assessments.list.key(),
+		});
+	};
+	const createItem = useMutation(
+		orpc.assessments.createItem.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await refresh();
+				setPrompt("");
+				setExplanation("");
+				setOrdinal((value) => value + 1);
+				toast.success("Đã thêm câu hỏi.");
+			},
+		}),
+	);
+	if (!enabled) return null;
+
+	return (
+		<CardContent className="space-y-4 border-t bg-muted/20 pt-4">
+			<div>
+				<h4 className="font-semibold text-sm">Câu hỏi và đáp án</h4>
+				<p className="text-muted-foreground text-xs">
+					Quản lý các câu hỏi của phiên bản quiz này.
+				</p>
+			</div>
+			<form
+				className="grid gap-2 border bg-background p-3 md:grid-cols-[5rem_1fr_1fr_auto]"
+				onSubmit={(event) => {
+					event.preventDefault();
+					if (!prompt.trim()) return;
+					createItem.mutate({
+						contentVersionId,
+						explanation,
+						itemType,
+						ordinal,
+						prompt,
+					});
+				}}
+			>
+				<label className="space-y-1 text-xs">
+					<span>Thứ tự</span>
+					<Input
+						min={1}
+						onChange={(event) => setOrdinal(Number(event.target.value))}
+						type="number"
+						value={ordinal}
+					/>
+				</label>
+				<label className="space-y-1 text-xs">
+					<span>Câu hỏi</span>
+					<Input
+						onChange={(event) => setPrompt(event.target.value)}
+						placeholder="Nhập nội dung câu hỏi"
+						value={prompt}
+					/>
+				</label>
+				<label className="space-y-1 text-xs">
+					<span>Giải thích</span>
+					<Input
+						onChange={(event) => setExplanation(event.target.value)}
+						placeholder="Giải thích đáp án"
+						value={explanation}
+					/>
+				</label>
+				<label className="space-y-1 text-xs">
+					<span>Loại</span>
+					<select
+						className="h-9 w-full border border-input bg-background px-2"
+						onChange={(event) =>
+							setItemType(event.target.value as typeof itemType)
+						}
+						value={itemType}
+					>
+						<option value="single_choice">Một đáp án</option>
+						<option value="multiple_choice">Nhiều đáp án</option>
+						<option value="short_answer">Tự luận</option>
+					</select>
+				</label>
+				<Button disabled={createItem.isPending || !prompt.trim()} type="submit">
+					Thêm câu hỏi
+				</Button>
+			</form>
+			{items.isPending ? (
+				<p className="text-muted-foreground text-xs">Đang tải câu hỏi…</p>
+			) : null}
+			{items.isError ? (
+				<p className="text-destructive text-xs" role="alert">
+					Không thể tải câu hỏi.
+				</p>
+			) : null}
+			{items.data?.length === 0 ? (
+				<p className="text-muted-foreground text-xs">Chưa có câu hỏi.</p>
+			) : null}
+			{items.data?.map((item) => (
+				<AssessmentItemEditor item={item} key={item.id} onRefresh={refresh} />
+			))}
+		</CardContent>
+	);
+}
+
+function AssessmentItemEditor({
+	item,
+	onRefresh,
+}: {
+	item: AssessmentItem;
+	onRefresh: () => Promise<void>;
+}) {
+	const [prompt, setPrompt] = useState(item.prompt);
+	const [explanation, setExplanation] = useState(item.explanation);
+	const [ordinal, setOrdinal] = useState(item.ordinal);
+	const [itemType, setItemType] = useState(item.itemType);
+	const [isEditing, setIsEditing] = useState(false);
+	const updateItem = useMutation(
+		orpc.assessments.updateItem.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await onRefresh();
+				setIsEditing(false);
+				toast.success("Đã cập nhật câu hỏi.");
+			},
+		}),
+	);
+	const deleteItem = useMutation(
+		orpc.assessments.deleteItem.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await onRefresh();
+				toast.success("Đã xóa câu hỏi.");
+			},
+		}),
+	);
+
+	return (
+		<div className="space-y-3 border bg-background p-3">
+			<div className="flex flex-wrap items-start justify-between gap-2">
+				<div>
+					<p className="font-medium text-sm">
+						{item.ordinal}. {item.prompt}
+					</p>
+					<p className="text-muted-foreground text-xs">
+						{item.itemType} · {item.options.length} lựa chọn
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => setIsEditing((value) => !value)}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy" : "Sửa"}
+					</Button>
+					<Button
+						disabled={deleteItem.isPending}
+						onClick={() => deleteItem.mutate({ itemId: item.id })}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						Xóa
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form
+					className="grid gap-2 md:grid-cols-[5rem_1fr_1fr_10rem_auto]"
+					onSubmit={(event) => {
+						event.preventDefault();
+						updateItem.mutate({
+							explanation,
+							itemId: item.id,
+							itemType,
+							ordinal,
+							prompt,
+						});
+					}}
+				>
+					<Input
+						min={1}
+						onChange={(event) => setOrdinal(Number(event.target.value))}
+						type="number"
+						value={ordinal}
+					/>
+					<Input
+						onChange={(event) => setPrompt(event.target.value)}
+						value={prompt}
+					/>
+					<Input
+						onChange={(event) => setExplanation(event.target.value)}
+						value={explanation}
+					/>
+					<select
+						className="h-9 border border-input bg-background px-2 text-xs"
+						onChange={(event) =>
+							setItemType(event.target.value as typeof itemType)
+						}
+						value={itemType}
+					>
+						<option value="single_choice">Một đáp án</option>
+						<option value="multiple_choice">Nhiều đáp án</option>
+						<option value="short_answer">Tự luận</option>
+					</select>
+					<Button disabled={updateItem.isPending} size="sm" type="submit">
+						Lưu
+					</Button>
+				</form>
+			) : null}
+			{item.options.map((option) => (
+				<AssessmentOptionEditor
+					key={option.id}
+					onRefresh={onRefresh}
+					option={option}
+				/>
+			))}
+			<NewOptionForm
+				itemId={item.id}
+				nextOrdinal={
+					Math.max(0, ...item.options.map((option) => option.ordinal)) + 1
+				}
+				onRefresh={onRefresh}
+			/>
+		</div>
+	);
+}
+
+type AssessmentOption = AssessmentItem["options"][number];
+
+function AssessmentOptionEditor({
+	onRefresh,
+	option,
+}: {
+	onRefresh: () => Promise<void>;
+	option: AssessmentOption;
+}) {
+	const [text, setText] = useState(option.text);
+	const [isCorrect, setIsCorrect] = useState(option.isCorrect);
+	const [ordinal, setOrdinal] = useState(option.ordinal);
+	const updateOption = useMutation(
+		orpc.assessments.updateOption.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: onRefresh,
+		}),
+	);
+	const deleteOption = useMutation(
+		orpc.assessments.deleteOption.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: onRefresh,
+		}),
+	);
+	return (
+		<div className="flex flex-wrap items-center gap-2 pl-4">
+			<Input
+				className="w-20"
+				min={1}
+				onChange={(event) => setOrdinal(Number(event.target.value))}
+				type="number"
+				value={ordinal}
+			/>
+			<Input
+				className="min-w-40 flex-1"
+				onChange={(event) => setText(event.target.value)}
+				value={text}
+			/>
+			<label className="flex items-center gap-1 text-xs">
+				<input
+					checked={isCorrect}
+					onChange={(event) => setIsCorrect(event.target.checked)}
+					type="checkbox"
+				/>
+				Đúng
+			</label>
+			<Button
+				disabled={updateOption.isPending}
+				onClick={() =>
+					updateOption.mutate({
+						isCorrect,
+						optionId: option.id,
+						ordinal,
+						text,
+					})
+				}
+				size="sm"
+				type="button"
+				variant="outline"
+			>
+				Lưu
+			</Button>
+			<Button
+				disabled={deleteOption.isPending}
+				onClick={() => deleteOption.mutate({ optionId: option.id })}
+				size="sm"
+				type="button"
+				variant="ghost"
+			>
+				Xóa
+			</Button>
+		</div>
+	);
+}
+
+function NewOptionForm({
+	itemId,
+	nextOrdinal,
+	onRefresh,
+}: {
+	itemId: string;
+	nextOrdinal: number;
+	onRefresh: () => Promise<void>;
+}) {
+	const [text, setText] = useState("");
+	const [isCorrect, setIsCorrect] = useState(false);
+	const [ordinal, setOrdinal] = useState(nextOrdinal);
+	const createOption = useMutation(
+		orpc.assessments.createOption.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await onRefresh();
+				setText("");
+				setOrdinal((value) => value + 1);
+			},
+		}),
+	);
+	return (
+		<form
+			className="flex flex-wrap items-center gap-2 pl-4"
+			onSubmit={(event) => {
+				event.preventDefault();
+				if (!text.trim()) return;
+				createOption.mutate({
+					assessmentItemId: itemId,
+					isCorrect,
+					ordinal,
+					text,
+				});
+			}}
+		>
+			<Input
+				className="w-20"
+				min={1}
+				onChange={(event) => setOrdinal(Number(event.target.value))}
+				type="number"
+				value={ordinal}
+			/>
+			<Input
+				className="min-w-40 flex-1"
+				onChange={(event) => setText(event.target.value)}
+				placeholder="Thêm lựa chọn"
+				value={text}
+			/>
+			<label className="flex items-center gap-1 text-xs">
+				<input
+					checked={isCorrect}
+					onChange={(event) => setIsCorrect(event.target.checked)}
+					type="checkbox"
+				/>
+				Đúng
+			</label>
+			<Button
+				disabled={createOption.isPending || !text.trim()}
+				size="sm"
+				type="submit"
+			>
+				Thêm đáp án
+			</Button>
+		</form>
 	);
 }
 

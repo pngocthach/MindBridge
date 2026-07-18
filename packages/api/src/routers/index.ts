@@ -1,6 +1,7 @@
 import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
+import { assessmentRouter } from "./assessments";
 import { assignmentRouter } from "./assignments";
 import { contentGenerationRouter } from "./content-generation";
 import { contentWorkflowRouter } from "./content-workflow";
@@ -17,6 +18,7 @@ import { usersRouter } from "./users";
 
 export const appRouter = {
 	assignments: assignmentRouter,
+	assessments: assessmentRouter,
 	contentWorkflow: contentWorkflowRouter,
 	courseCurriculum: courseCurriculumRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),

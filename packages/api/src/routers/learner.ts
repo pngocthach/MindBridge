@@ -6,6 +6,7 @@ import {
 	courseContent,
 	db,
 	learnerLessonProgress,
+	learnerProfile,
 	learningContent,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
@@ -16,6 +17,22 @@ import { permissionProcedure } from "../index";
 
 const classroomInput = z.object({ classroomId: z.string().uuid() });
 const lessonInput = classroomInput.extend({ contentId: z.string().uuid() });
+const profileInput = z.object({
+	gradeLevel: z.number().int().min(1).max(12),
+	learningGoal: z.string().trim().min(1).max(2000),
+	locale: z.enum(["vi-VN", "en-US"]),
+	proficiencyLevel: z.enum(["beginner", "intermediate", "advanced"]),
+});
+
+const profileFields = {
+	createdAt: learnerProfile.createdAt,
+	gradeLevel: learnerProfile.gradeLevel,
+	learningGoal: learnerProfile.learningGoal,
+	locale: learnerProfile.locale,
+	proficiencyLevel: learnerProfile.proficiencyLevel,
+	updatedAt: learnerProfile.updatedAt,
+	userId: learnerProfile.userId,
+};
 
 const learnerProcedure = permissionProcedure("learning:read").use(
 	async ({ context, next }) => {
@@ -201,6 +218,14 @@ export const learnerRouter = {
 				totalCount: content.length,
 			};
 		}),
+	getProfile: learnerProcedure.handler(async ({ context }) => {
+		const [profile] = await db
+			.select(profileFields)
+			.from(learnerProfile)
+			.where(eq(learnerProfile.userId, context.session.user.id))
+			.limit(1);
+		return profile ?? null;
+	}),
 	listCourses: learnerProcedure.handler(async ({ context }) => {
 		const learnerId = context.session.user.id;
 		const enrollments = await db
@@ -310,5 +335,24 @@ export const learnerRouter = {
 				contentId: item.contentId,
 				isCompleted: item.isCompleted,
 			}));
+		}),
+	upsertProfile: learnerProcedure
+		.input(profileInput)
+		.handler(async ({ context, input }) => {
+			const [profile] = await db
+				.insert(learnerProfile)
+				.values({ ...input, userId: context.session.user.id })
+				.onConflictDoUpdate({
+					set: input,
+					target: learnerProfile.userId,
+				})
+				.returning(profileFields);
+
+			if (!profile) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Learner profile could not be saved.",
+				});
+			}
+			return profile;
 		}),
 };
