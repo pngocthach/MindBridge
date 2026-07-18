@@ -1,7 +1,7 @@
 ## TODO
 
 - [ ] Thêm cài đặt profile tài khoản cho learner + giáo viên
-- [ ] Thêm padding/margin giữa label ở lúc mới đăng nhập, check lại xem còn cái nào bị dính cái này không
+- [x] Thêm padding/margin giữa label ở lúc mới đăng nhập, check lại xem còn cái nào bị dính cái này không
 - [ ] Đóng thành component -> Thêm rule và AGENTS.md bắt phải dùng thư viện component UI thay vì viết raw html
 - [ ] Trang admin thừa tính năng thêm học liệu
 - [ ] Vào trang admin đang bị trống -> sửa lại route -> chuyển lại thành route admin + bỏ route dashboard

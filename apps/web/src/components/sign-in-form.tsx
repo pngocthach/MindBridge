@@ -76,7 +76,7 @@ export default function SignInForm({
 				</CardHeader>
 				<CardContent>
 					<form
-						className="space-y-5"
+						className="space-y-6"
 						onSubmit={(e) => {
 							e.preventDefault();
 							e.stopPropagation();
@@ -85,8 +85,14 @@ export default function SignInForm({
 					>
 						<form.Field name="email">
 							{(field) => (
-								<div className="space-y-2">
-									<Label htmlFor={field.name}>Email</Label>
+								<div className="space-y-2.5">
+									<Label htmlFor={field.name}>
+										Email{" "}
+										<span aria-hidden="true" className="text-destructive">
+											*
+										</span>
+										<span className="sr-only"> bắt buộc</span>
+									</Label>
 									<Input
 										autoComplete="email"
 										id={field.name}
@@ -111,8 +117,14 @@ export default function SignInForm({
 
 						<form.Field name="password">
 							{(field) => (
-								<div className="space-y-2">
-									<Label htmlFor={field.name}>Mật khẩu</Label>
+								<div className="space-y-2.5">
+									<Label htmlFor={field.name}>
+										Mật khẩu{" "}
+										<span aria-hidden="true" className="text-destructive">
+											*
+										</span>
+										<span className="sr-only"> bắt buộc</span>
+									</Label>
 									<Input
 										autoComplete="current-password"
 										id={field.name}
