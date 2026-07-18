@@ -77,8 +77,8 @@ function AdminContentPage() {
 	}
 
 	return (
-		<section aria-labelledby="content-workflow-title" className="space-y-6">
-			<header>
+		<section aria-labelledby="content-workflow-title" className="space-y-4">
+			<header className="rounded-xl border bg-card/80 p-4 shadow-sm">
 				<h1 className="font-semibold text-2xl" id="content-workflow-title">
 					Kiểm duyệt học liệu
 				</h1>
@@ -128,7 +128,7 @@ function AdminContentPage() {
 				</Empty>
 			) : null}
 			{versions.data ? (
-				<div className="grid gap-4 lg:grid-cols-2">
+				<div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
 					{versions.data.map((version) => (
 						<ContentVersionCard key={version.id} version={version} />
 					))}

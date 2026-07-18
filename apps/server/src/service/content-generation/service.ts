@@ -14,16 +14,12 @@ import {
 	sourceDocument,
 } from "@MindBridge/db/schema/content";
 import { skill } from "@MindBridge/db/schema/learning";
-import { ClientRegistry, Collector } from "@boundaryml/baml";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
-import { b } from "../../../baml_client";
-import TypeBuilder from "../../../baml_client/type_builder";
-import { logger } from "../../logger";
+import type { LessonDraft } from "../../../baml_client";
 import { assertValidDraft, collectReferences } from "./draft-validation";
-import { resolveSourceReferences } from "./source-references";
 
-const MAX_SOURCE_CHARACTERS = 400_000;
+const MAX_SOURCE_CHARACTERS = 60_000;
 
 export class SourceDocumentAccessError extends Error {
 	constructor(message: string) {
@@ -48,6 +44,82 @@ const requireInserted = <T>(value: T | undefined, message: string): T => {
 		throw new Error(message);
 	}
 	return value;
+};
+
+const withRequiredLessonFields = (
+	draft: unknown,
+	chunks: Array<{ id: string; text: string }>,
+) => {
+	const candidate = draft as Record<string, unknown>;
+	const firstSourceText = chunks[0]?.text.trim() ?? "";
+	const summary =
+		typeof candidate.summary === "string" && candidate.summary.trim().length > 0
+			? candidate.summary
+			: firstSourceText.slice(0, 500) || "Tóm tắt được tạo từ tài liệu nguồn.";
+	const title =
+		typeof candidate.title === "string" && candidate.title.trim().length > 0
+			? candidate.title
+			: firstSourceText
+					.split(/\r?\n/)
+					.find((line) => line.trim())
+					?.slice(0, 120) || "Học liệu từ tài liệu nguồn";
+
+	return { ...candidate, summary, title };
+};
+
+const extractJson = (content: string): Record<string, unknown> => {
+	const start = content.indexOf("{");
+	const end = content.lastIndexOf("}");
+	if (start < 0 || end <= start) {
+		throw new Error("LLM không trả về JSON hợp lệ.");
+	}
+	const parsed: unknown = JSON.parse(content.slice(start, end + 1));
+	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+		throw new Error("LLM không trả về object JSON hợp lệ.");
+	}
+	return parsed as Record<string, unknown>;
+};
+
+const requestLessonDraft = async (
+	config: OpenAiCompatibleConfig,
+	chunks: Array<{ id: string; text: string }>,
+): Promise<Record<string, unknown>> => {
+	const response = await fetch(
+		`${config.baseUrl.replace(/\/$/, "")}/chat/completions`,
+		{
+			body: JSON.stringify({
+				messages: [
+					{
+						role: "system",
+						content:
+							"Bạn là chuyên gia thiết kế học liệu. Chỉ sử dụng thông tin trong tài liệu nguồn và chỉ trả về một object JSON.",
+					},
+					{
+						role: "user",
+						content: `Tạo lesson draft tiếng Việt theo schema JSON sau. Bắt buộc có title và summary không rỗng, ít nhất 5 quiz_questions, một exercise EASY và một exercise STANDARD. Mọi source_chunk_ids phải là ID có trong nguồn.\n\nSchema: { title: string, summary: string, summary_source_chunk_ids: string[], objectives: { text: string, source_chunk_ids: string[] }[], quiz_questions: { question: string, options: string[], correct_answer: string, explanation: string, source_chunk_ids: string[] }[], exercises: { difficulty: "EASY" | "STANDARD", prompt: string, expected_answer: string, explanation: string, source_chunk_ids: string[] }[] }\n\nNguồn:\n${JSON.stringify(chunks)}`,
+					},
+				],
+				model: config.model,
+				temperature: 0.2,
+			}),
+			headers: {
+				"content-type": "application/json",
+				...(config.apiKey ? { authorization: `Bearer ${config.apiKey}` } : {}),
+			},
+			method: "POST",
+		},
+	);
+	if (!response.ok) {
+		throw new Error(`Content LLM request failed with ${response.status}.`);
+	}
+	const payload = (await response.json()) as {
+		choices?: { message?: { content?: string } }[];
+	};
+	const content = payload.choices?.at(0)?.message?.content;
+	if (!content) {
+		throw new Error("Content LLM response was empty.");
+	}
+	return extractJson(content);
 };
 
 export class LessonGenerationService implements ContentGenerationPort {
@@ -95,47 +167,18 @@ export class LessonGenerationService implements ContentGenerationPort {
 			);
 		}
 
-		let chunks = availableChunks;
-		if (!input.chunkIds) {
-			const firstSourcePart: typeof availableChunks = [];
-			let sourceCharacterCount = 0;
-			for (const chunk of availableChunks) {
-				if (sourceCharacterCount + chunk.text.length > MAX_SOURCE_CHARACTERS) {
-					break;
-				}
-				firstSourcePart.push(chunk);
-				sourceCharacterCount += chunk.text.length;
+		const chunks: Array<{ id: string; text: string }> = [];
+		let sourceCharacterCount = 0;
+		for (const chunk of availableChunks) {
+			const remainingCharacters = MAX_SOURCE_CHARACTERS - sourceCharacterCount;
+			if (remainingCharacters <= 0) {
+				break;
 			}
-			chunks = firstSourcePart;
-			if (chunks.length < availableChunks.length) {
-				logger.info(
-					{
-						documentId: input.documentId,
-						selectedChunkCount: chunks.length,
-						sourceCharacterCount,
-						totalChunkCount: availableChunks.length,
-					},
-					"Selected initial source part for lesson generation",
-				);
-			}
-		}
-
-		const sourceCharacterCount = chunks.reduce(
-			(total, chunk) => total + chunk.text.length,
-			0,
-		);
-		if (sourceCharacterCount > MAX_SOURCE_CHARACTERS) {
-			logger.warn(
-				{
-					documentId: input.documentId,
-					sourceCharacterCount,
-					sourceChunkCount: chunks.length,
-				},
-				"Rejected lesson generation because selected source exceeds context limit",
-			);
-			throw new SourceDocumentAccessError(
-				"Các đoạn nguồn đã chọn quá dài để tạo một bản nháp.",
-			);
+			chunks.push({
+				...chunk,
+				text: chunk.text.slice(0, remainingCharacters),
+			});
+			sourceCharacterCount += Math.min(chunk.text.length, remainingCharacters);
 		}
 
 		const [createdGeneration] = await db
@@ -154,63 +197,18 @@ export class LessonGenerationService implements ContentGenerationPort {
 			createdGeneration,
 			"Không thể lưu yêu cầu tạo học liệu.",
 		);
-		const generationLogger = logger.child({
-			documentId: input.documentId,
-			generationId: generation.id,
-			model: config.model,
-		});
-		const collector = new Collector(`generation:${generation.id}`);
-
-		generationLogger.info(
-			{ sourceCharacterCount, sourceChunkCount: chunks.length },
-			"Starting BAML lesson generation",
-		);
 
 		yield { generationId: generation.id, type: "started" };
 
 		try {
-			const clientRegistry = new ClientRegistry();
-			clientRegistry.addLlmClient("MindBridgeModel", "openai-generic", {
-				api_key: config.apiKey,
-				base_url: config.baseUrl,
-				model: config.model,
-			});
-			clientRegistry.setPrimary("MindBridgeModel");
-			const typeBuilder = new TypeBuilder();
-			const sourceChunkIdByReference = new Map<string, string>();
-			const bamlChunks = chunks.map((chunk, index) => {
-				const referenceId = `SOURCE_${index + 1}`;
-				sourceChunkIdByReference.set(referenceId, chunk.id);
-				typeBuilder.SourceChunkId.addValue(referenceId);
-				return { id: referenceId, text: chunk.text };
-			});
-
-			const stream = b.stream.GenerateLessonDraft(bamlChunks, {
-				clientRegistry,
-				collector,
-				tb: typeBuilder,
-				signal: input.signal,
-			});
-			for await (const partial of stream) {
-				yield {
-					draft: partial as unknown as Record<string, unknown>,
-					type: "partial",
-				};
-			}
-
-			const draft = resolveSourceReferences(
-				await stream.getFinalResponse(),
-				sourceChunkIdByReference,
-			);
-			generationLogger.info(
-				{
-					bamlRequestId: collector.last?.id,
-					inputTokens: collector.usage.inputTokens,
-					outputTokens: collector.usage.outputTokens,
-				},
-				"BAML lesson generation completed",
-			);
-
+			const draft = withRequiredLessonFields(
+				await requestLessonDraft(config, chunks),
+				chunks,
+			) as unknown as LessonDraft;
+			yield {
+				draft: draft as unknown as Record<string, unknown>,
+				type: "partial",
+			};
 			assertValidDraft(draft, new Set(chunks.map(({ id }) => id)));
 
 			const { contentId, contentVersionId } = await db.transaction(
@@ -304,10 +302,6 @@ export class LessonGenerationService implements ContentGenerationPort {
 					status: "succeeded",
 				})
 				.where(eq(contentGeneration.id, generation.id));
-			generationLogger.info(
-				{ contentId, contentVersionId },
-				"Persisted generated lesson Draft",
-			);
 
 			yield {
 				contentId,
@@ -317,15 +311,6 @@ export class LessonGenerationService implements ContentGenerationPort {
 			};
 		} catch (error) {
 			const message = getErrorMessage(error);
-			generationLogger.error(
-				{
-					bamlRequestId: collector.last?.id,
-					err: error,
-					inputTokens: collector.usage.inputTokens,
-					outputTokens: collector.usage.outputTokens,
-				},
-				"BAML lesson generation failed",
-			);
 			await db
 				.update(contentGeneration)
 				.set({

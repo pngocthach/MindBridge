@@ -3,6 +3,7 @@ import {
 	contentVersion,
 	db,
 	learnerSkillMastery,
+	learningAttempt,
 	learningContent,
 	recommendation,
 	recommendationRun,
@@ -14,7 +15,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../index";
 
-const ENGINE_VERSION = "prerequisite-path-v1";
+const ENGINE_VERSION = "prerequisite-path-v2";
 
 const generateInput = z.object({
 	limit: z.number().int().min(1).max(20).default(6),
@@ -141,11 +142,9 @@ export const selectContent = (
 			);
 		});
 
-	return (
-		rankedCandidates.find(
-			({ candidate }) => !usedContentIds.has(candidate.contentVersionId),
-		)?.candidate ?? rankedCandidates[0]?.candidate
-	);
+	return rankedCandidates.find(
+		({ candidate }) => !usedContentIds.has(candidate.contentVersionId),
+	)?.candidate;
 };
 
 const percent = (value: number): number => Math.round(value * 100);
@@ -275,7 +274,9 @@ const getLatestRecommendations = async (learnerId: string) => {
 	const recommendations = await db
 		.select({
 			blockingSkillId: recommendation.blockingSkillId,
+			contentBody: contentVersion.body,
 			contentKind: learningContent.kind,
+			contentMetadata: contentVersion.metadata,
 			contentTitle: learningContent.title,
 			contentVersionId: recommendation.contentVersionId,
 			id: recommendation.id,
@@ -310,6 +311,35 @@ export const recommendationRouter = {
 		.handler(({ context, input }) =>
 			db.transaction(async (transaction) => {
 				const learnerId = context.session.user.id;
+				const [previousRun] = await transaction
+					.select({ id: recommendationRun.id })
+					.from(recommendationRun)
+					.where(eq(recommendationRun.learnerId, learnerId))
+					.orderBy(
+						desc(recommendationRun.createdAt),
+						desc(recommendationRun.id),
+					)
+					.limit(1);
+				const [completedContentRows, previousRecommendationRows] =
+					await Promise.all([
+						transaction
+							.selectDistinct({
+								contentVersionId: learningAttempt.contentVersionId,
+							})
+							.from(learningAttempt)
+							.where(
+								and(
+									eq(learningAttempt.learnerId, learnerId),
+									eq(learningAttempt.status, "completed"),
+								),
+							),
+						previousRun
+							? transaction
+									.select({ contentVersionId: recommendation.contentVersionId })
+									.from(recommendation)
+									.where(eq(recommendation.runId, previousRun.id))
+							: Promise.resolve([]),
+					]);
 				const [masteryRows, skillRows, prerequisiteRows, candidateRows] =
 					await Promise.all([
 						transaction
@@ -369,9 +399,13 @@ export const recommendationRouter = {
 							?.score ?? 0,
 				}));
 				const plans = buildPlans(masteryRows, skillStates, prerequisiteRows);
-				const usedContentIds = new Set<string>();
-				const selections = plans
-					.map((plan) => {
+				const selectForPlans = (excludedContentIds: ReadonlySet<string>) => {
+					const usedContentIds = new Set(excludedContentIds);
+					const selections: Array<{
+						candidate: ContentCandidate;
+						plan: RecommendationPlan;
+					}> = [];
+					for (const plan of plans) {
 						const candidate = selectContent(
 							candidateRows,
 							plan.recommendedSkill,
@@ -379,14 +413,26 @@ export const recommendationRouter = {
 						);
 						if (candidate) {
 							usedContentIds.add(candidate.contentVersionId);
+							selections.push({ candidate, plan });
 						}
-						return candidate ? { candidate, plan } : null;
-					})
-					.filter(
-						(selection): selection is NonNullable<typeof selection> =>
-							selection !== null,
-					)
-					.slice(0, input.limit);
+						if (selections.length >= input.limit) {
+							break;
+						}
+					}
+					return selections;
+				};
+				const completedContentIds = new Set(
+					completedContentRows.map((row) => row.contentVersionId),
+				);
+				const recentlyUsedContentIds = new Set([
+					...completedContentIds,
+					...previousRecommendationRows.map((row) => row.contentVersionId),
+				]);
+				const freshSelections = selectForPlans(recentlyUsedContentIds);
+				const selections =
+					freshSelections.length > 0
+						? freshSelections
+						: selectForPlans(completedContentIds);
 
 				const [run] = await transaction
 					.insert(recommendationRun)

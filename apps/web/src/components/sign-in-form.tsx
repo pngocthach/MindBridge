@@ -65,7 +65,7 @@ export default function SignInForm({
 	}
 
 	return (
-		<main className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
+		<main className="flex min-h-svh items-center justify-center p-4">
 			<Card className="w-full max-w-md">
 				<CardHeader>
 					<CardTitle className="text-2xl">Chào mừng bạn trở lại</CardTitle>

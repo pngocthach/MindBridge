@@ -9,8 +9,8 @@
 		"dev": "vite dev"
 	},
 	"dependencies": {
-		"@MindBridge/auth": "workspace:*",
 		"@MindBridge/api": "workspace:*",
+		"@MindBridge/auth": "workspace:*",
 		"@MindBridge/env": "workspace:*",
 		"@MindBridge/ui": "workspace:*",
 		"@orpc/client": "catalog:",
@@ -28,6 +28,8 @@
 		"next-themes": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
+		"react-markdown": "^10.1.0",
+		"remark-gfm": "^4.0.1",
 		"sonner": "catalog:",
 		"tailwindcss": "catalog:",
 		"zod": "catalog:"

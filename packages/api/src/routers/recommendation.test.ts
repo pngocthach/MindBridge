@@ -65,8 +65,14 @@ describe("recommendation contracts", () => {
 			prerequisiteSkill,
 			new Set(["content-beginner"]),
 		);
+		const exhausted = selectContent(
+			candidates,
+			prerequisiteSkill,
+			new Set(["content-beginner", "content-advanced"]),
+		);
 
 		expect(beginner?.contentVersionId).toBe("content-beginner");
 		expect(fallback?.contentVersionId).toBe("content-advanced");
+		expect(exhausted).toBeUndefined();
 	});
 });

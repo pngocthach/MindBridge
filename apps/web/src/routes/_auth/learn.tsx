@@ -15,7 +15,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, CircleAlert, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
@@ -25,27 +25,12 @@ export const Route = createFileRoute("/_auth/learn")({
 	component: LearnerPage,
 });
 
-const quiz = {
-	contentVersionId: "00000000-0000-4000-8000-000000000032",
-	questionId: "00000000-0000-4000-8000-000000000051",
-	options: [
-		{
-			id: "00000000-0000-4000-8000-000000000061",
-			label: "Khi cần duyệt lần lượt các giá trị trong một tập hợp.",
-			isCorrect: true,
-		},
-		{
-			id: "00000000-0000-4000-8000-000000000062",
-			label: "Khi chương trình chỉ thực hiện một phép gán.",
-			isCorrect: false,
-		},
-	],
-} as const;
-
 function LearnerPage() {
 	const queryClient = useQueryClient();
 	const profile = useQuery(orpc.mastery.profile.queryOptions());
+	const practice = useQuery(orpc.mastery.practice.queryOptions());
 	const latest = useQuery(orpc.recommendation.latest.queryOptions());
+	const practiceStartedAt = useRef(Date.now());
 	const [selectedOptionId, setSelectedOptionId] = useState<string>();
 	const generate = useMutation(
 		orpc.recommendation.generate.mutationOptions({
@@ -75,27 +60,24 @@ function LearnerPage() {
 			return;
 		}
 
-		const selectedOption = quiz.options.find(
-			(option) => option.id === selectedOptionId,
-		);
-		if (!selectedOption) {
+		if (!practice.data) {
 			return;
 		}
+		const durationSeconds = Math.max(
+			1,
+			Math.round((Date.now() - practiceStartedAt.current) / 1000),
+		);
 
 		try {
 			await submitAttempt.mutateAsync({
-				contentVersionId: quiz.contentVersionId,
-				durationSeconds: 30,
+				contentVersionId: practice.data.contentVersionId,
+				durationSeconds,
 				responses: [
 					{
-						assessmentItemId: quiz.questionId,
+						assessmentItemId: practice.data.id,
 						attemptNumber: 1,
-						durationSeconds: 30,
-						errorType: selectedOption.isCorrect
-							? "unknown"
-							: "skill_misconception",
-						isCorrect: selectedOption.isCorrect,
-						selectedOptionId: selectedOption.id,
+						durationSeconds,
+						selectedOptionId,
 					},
 				],
 			});
@@ -112,11 +94,11 @@ function LearnerPage() {
 		}
 	};
 
-	if (profile.isPending || latest.isPending) {
+	if (profile.isPending || latest.isPending || practice.isPending) {
 		return <Loader />;
 	}
 
-	if (profile.isError || latest.isError) {
+	if (profile.isError || latest.isError || practice.isError) {
 		return (
 			<section
 				className="rounded-none border border-destructive/30 bg-destructive/10 p-6"
@@ -135,13 +117,13 @@ function LearnerPage() {
 	const recommendations = latest.data?.recommendations ?? [];
 
 	return (
-		<section aria-labelledby="learner-title" className="space-y-6">
-			<header className="flex flex-wrap items-end justify-between gap-4">
+		<section aria-labelledby="learner-title" className="space-y-4">
+			<header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card/80 p-4 shadow-sm">
 				<div>
 					<p className="font-medium text-primary text-xs uppercase tracking-widest">
 						Không gian học tập
 					</p>
-					<h1 className="mt-2 font-semibold text-2xl" id="learner-title">
+					<h1 className="mt-1 font-semibold text-2xl" id="learner-title">
 						Lộ trình học của bạn
 					</h1>
 					<p className="mt-1 max-w-2xl text-muted-foreground text-sm">
@@ -159,97 +141,117 @@ function LearnerPage() {
 				</Button>
 			</header>
 
-			<section aria-labelledby="progress-title">
-				<div className="mb-3 flex items-baseline justify-between">
-					<h2 className="font-semibold text-lg" id="progress-title">
-						Tiến độ kỹ năng
-					</h2>
-					<p className="text-muted-foreground text-xs">
-						{skills.filter((skill) => skill.isMastered).length}/{skills.length}{" "}
-						kỹ năng đã đạt ngưỡng
-					</p>
-				</div>
-				{skills.length === 0 ? (
-					<Empty className="border">
-						<EmptyHeader>
-							<EmptyTitle>Chưa có dữ liệu mastery</EmptyTitle>
-							<EmptyDescription>
-								Hãy hoàn thành bài luyện tập đầu tiên để bắt đầu theo dõi tiến
-								bộ.
-							</EmptyDescription>
-						</EmptyHeader>
-					</Empty>
-				) : (
-					<div className="grid gap-3 md:grid-cols-2">
-						{skills.map((skill) => (
-							<SkillProgress key={skill.skillId} skill={skill} />
-						))}
-					</div>
-				)}
-			</section>
-
-			<Card className="border-primary/30 bg-primary/5" id="de-xuat">
-				<CardHeader>
-					<CardTitle>Đề xuất bước học tiếp theo</CardTitle>
-					<CardDescription>
-						MindBridge ưu tiên lấp khoảng trống tiền đề trước khi đưa bạn đến kỹ
-						năng nâng cao.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{recommendations.length === 0 ? (
-						<div className="border border-dashed p-4 text-muted-foreground text-sm">
-							Chưa có đề xuất. Nhấn “Cập nhật đề xuất” để tạo lộ trình cá nhân
-							hóa.
+			<div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)]">
+				<div className="space-y-4">
+					<section
+						aria-labelledby="progress-title"
+						className="rounded-xl border bg-card/70 p-4 shadow-sm"
+					>
+						<div className="mb-3 flex items-baseline justify-between">
+							<h2 className="font-semibold text-lg" id="progress-title">
+								Tiến độ kỹ năng
+							</h2>
+							<p className="text-muted-foreground text-xs">
+								{skills.filter((skill) => skill.isMastered).length}/
+								{skills.length} kỹ năng đã đạt ngưỡng
+							</p>
 						</div>
-					) : (
-						<ol className="space-y-3">
-							{recommendations.map((recommendation) => (
-								<li
-									className="flex gap-3 border bg-background p-4"
-									key={recommendation.id}
-								>
-									<div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-xs">
-										{recommendation.rank}
-									</div>
-									<div className="min-w-0 flex-1">
-										<p className="font-medium">{recommendation.contentTitle}</p>
-										<p className="mt-1 text-muted-foreground text-xs">
-											Kỹ năng: {recommendation.targetSkillName}
-										</p>
-										<p className="mt-2 text-sm">{recommendation.reasonVi}</p>
-										<a
-											className="mt-3 inline-flex items-center font-medium text-primary text-xs underline-offset-4 hover:underline"
-											href="#quiz"
+						{skills.length === 0 ? (
+							<Empty className="border">
+								<EmptyHeader>
+									<EmptyTitle>Chưa có dữ liệu mastery</EmptyTitle>
+									<EmptyDescription>
+										Hãy hoàn thành bài luyện tập đầu tiên để bắt đầu theo dõi
+										tiến bộ.
+									</EmptyDescription>
+								</EmptyHeader>
+							</Empty>
+						) : (
+							<div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+								{skills.map((skill) => (
+									<SkillProgress key={skill.skillId} skill={skill} />
+								))}
+							</div>
+						)}
+					</section>
+
+					<Card className="border-primary/30 bg-primary/5" id="de-xuat">
+						<CardHeader>
+							<CardTitle>Đề xuất bước học tiếp theo</CardTitle>
+							<CardDescription>
+								MindBridge ưu tiên lấp khoảng trống tiền đề trước khi đưa bạn
+								đến kỹ năng nâng cao.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							{recommendations.length === 0 ? (
+								<div className="border border-dashed p-4 text-muted-foreground text-sm">
+									Chưa có đề xuất. Nhấn “Cập nhật đề xuất” để tạo lộ trình cá
+									nhân hóa.
+								</div>
+							) : (
+								<ol className="space-y-3">
+									{recommendations.map((recommendation) => (
+										<li
+											className="flex gap-3 border bg-background p-4"
+											key={recommendation.id}
 										>
-											Mở khu vực luyện tập
-											<ArrowRight aria-hidden="true" className="ml-1 size-3" />
-										</a>
-									</div>
-								</li>
-							))}
-						</ol>
-					)}
-				</CardContent>
-			</Card>
+											<div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-xs">
+												{recommendation.rank}
+											</div>
+											<div className="min-w-0 flex-1">
+												<p className="font-medium">
+													{recommendation.contentTitle}
+												</p>
+												<p className="mt-1 text-muted-foreground text-xs">
+													Kỹ năng: {recommendation.targetSkillName}
+												</p>
+												<p className="mt-2 text-sm">
+													{recommendation.reasonVi}
+												</p>
+												<a
+													className="mt-3 inline-flex items-center font-medium text-primary text-xs underline-offset-4 hover:underline"
+													href="#quiz"
+												>
+													Mở khu vực luyện tập
+													<ArrowRight
+														aria-hidden="true"
+														className="ml-1 size-3"
+													/>
+												</a>
+											</div>
+										</li>
+									))}
+								</ol>
+							)}
+						</CardContent>
+					</Card>
+				</div>
 
-			<QuizCard
-				error={submitAttempt.isError || generate.isError}
-				isPending={isRefreshing}
-				isSubmitted={submitAttempt.isSuccess}
-				onSelect={setSelectedOptionId}
-				onSubmit={handleSubmit}
-				selectedOptionId={selectedOptionId}
-			/>
+				<aside className="space-y-3 xl:sticky xl:top-20">
+					<QuizCard
+						error={submitAttempt.isError || generate.isError}
+						isPending={isRefreshing}
+						isSubmitted={submitAttempt.isSuccess}
+						onSelect={setSelectedOptionId}
+						onSubmit={handleSubmit}
+						practice={practice.data}
+						selectedOptionId={selectedOptionId}
+					/>
 
-			{weakSkills.length > 0 ? (
-				<p className="flex items-start gap-2 text-muted-foreground text-xs">
-					<CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-					Khoảng trống hiện tại:{" "}
-					{weakSkills.map((skill) => skill.skillName).join(",")}. Hãy làm bài
-					luyện tập và xem lại đề xuất sau mỗi lần nộp.
-				</p>
-			) : null}
+					{weakSkills.length > 0 ? (
+						<p className="flex items-start gap-2 rounded-lg border bg-card/70 p-3 text-muted-foreground text-xs">
+							<CircleAlert
+								aria-hidden="true"
+								className="mt-0.5 size-4 shrink-0"
+							/>
+							Khoảng trống hiện tại:{" "}
+							{weakSkills.map((skill) => skill.skillName).join(",")}. Hãy làm
+							bài luyện tập và xem lại đề xuất sau mỗi lần nộp.
+						</p>
+					) : null}
+				</aside>
+			</div>
 		</section>
 	);
 }
@@ -319,6 +321,15 @@ type QuizCardProps = {
 	isSubmitted: boolean;
 	onSelect: (optionId: string) => void;
 	onSubmit: () => void;
+	practice:
+		| {
+				contentTitle: string;
+				id: string;
+				options: { id: string; text: string }[];
+				prompt: string;
+		  }
+		| null
+		| undefined;
 	selectedOptionId: string | undefined;
 };
 
@@ -328,24 +339,36 @@ function QuizCard({
 	isSubmitted,
 	onSelect,
 	onSubmit,
+	practice,
 	selectedOptionId,
 }: QuizCardProps) {
+	if (!practice) {
+		return (
+			<Empty className="border" id="quiz">
+				<EmptyHeader>
+					<EmptyTitle>Chưa có bài luyện tập</EmptyTitle>
+					<EmptyDescription>
+						Giáo viên cần xuất bản câu hỏi trước khi bạn có thể luyện tập.
+					</EmptyDescription>
+				</EmptyHeader>
+			</Empty>
+		);
+	}
+
 	return (
 		<Card id="quiz">
 			<CardHeader>
-				<CardTitle>Luyện tập: Vòng lặp for</CardTitle>
+				<CardTitle>Luyện tập: {practice.contentTitle}</CardTitle>
 				<CardDescription>
 					Chọn một đáp án rồi gửi kết quả để cập nhật mastery và lộ trình của
 					bạn.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<p className="font-medium">
-					Vòng lặp for thường phù hợp nhất trong trường hợp nào?
-				</p>
+				<p className="font-medium">{practice.prompt}</p>
 				<fieldset className="mt-4 space-y-2" disabled={isPending}>
 					<legend className="sr-only">Các đáp án</legend>
-					{quiz.options.map((option) => (
+					{practice.options.map((option) => (
 						<label
 							className="flex cursor-pointer items-start gap-3 border p-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
 							key={option.id}
@@ -357,7 +380,7 @@ function QuizCard({
 								onChange={() => onSelect(option.id)}
 								type="radio"
 							/>
-							<span className="text-sm">{option.label}</span>
+							<span className="text-sm">{option.text}</span>
 						</label>
 					))}
 				</fieldset>

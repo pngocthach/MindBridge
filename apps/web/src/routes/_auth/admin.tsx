@@ -113,8 +113,8 @@ function AdminConsoleContent() {
 	});
 
 	return (
-		<section aria-labelledby="admin-console-title" className="space-y-8">
-			<header className="flex flex-wrap items-start justify-between gap-4">
+		<section aria-labelledby="admin-console-title" className="space-y-4">
+			<header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card/80 p-4 shadow-sm">
 				<div>
 					<p className="font-medium text-primary text-sm">Content Curriculum</p>
 					<h1 className="mt-1 font-semibold text-3xl" id="admin-console-title">
@@ -144,7 +144,7 @@ function AdminConsoleContent() {
 				</section>
 			) : null}
 
-			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+			<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
 				{statuses.map((status) => {
 					const count =
 						versionsByStatus[statuses.indexOf(status)]?.data?.length ?? 0;
