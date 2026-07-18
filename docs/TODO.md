@@ -1,0 +1,31 @@
+## TODO
+
+- [ ] Thêm cài đặt profile tài khoản cho learner + giáo viên
+- [ ] Thêm padding/margin giữa label ở lúc mới đăng nhập, check lại xem còn cái nào bị dính cái này không
+- [ ] Đóng thành component -> Thêm rule và AGENTS.md bắt phải dùng thư viện component UI thay vì viết raw html
+- [ ] Trang admin thừa tính năng thêm học liệu
+- [ ] Vào trang admin đang bị trống -> sửa lại route -> chuyển lại thành route admin + bỏ route dashboard
+- [ ] Làm lại flow tài liệu nguồn để bỏ bớt các bước kiểm duyệt cho nhanh
+- [ ] Bỏ tự lưu tài liệu khi up lên, chỉ lưu khi mà user bấm lưu thôi (luồng ở trên content studio)
+- [ ] Thêm 1 cái nút sau khi gen ra thì gắn luôn vào khoá học
+- [ ] UI quizz cho học viên + đánh giá cho học viên , đang để mỗi là text -> không tương tác với chọn được
+- [ ] Gen content có hình ảnh và các format khác
+- [ ] Up tài liệu nguồn lên thì lúc nó parse ra thì nên có nút loading/thinking (có thể ở nút tạo bài học với AI) (giống claude)
+- [ ] Bỏ mấy cái khối lớp, mô tả hoặc để optional
+- [ ] Thêm dấu sao required cho mấy chỗ chưa có
+- [ ] Check lại mấy cái skill id xem có cần không
+- [ ] Cho user custom prompt lúc gen bài học (optional)
+- [ ] Cái AI gen ra mới readonly, chưa edit được
+- [ ] Thêm 1 cái feedback sau khi gen ra để có thể gen lại / gen tiếp
+- [ ] Cái lộ trình học chưa lấy được quizz ra
+- [ ] Check cái lộ trình học xem còn tính năng gì cần thêm để hoàn thiện không
+- [ ] Đề xuất lộ trình thì phải gen ra tóm tắt kiến thức + quizz mới + chú ý vào phần đang sai + hiện trợ lý lên
+- [ ] Con trợ lý chưa có enter để gửi
+- [ ] Sửa lại UI khoá học của học viên (làm giống coursera)
+- [ ] Sidebar chưa đóng vào được
+- [ ] Sửa nút ở sidebar + màu padding nhìn cho đẹp
+- [ ] Wording các cái thuật ngữ ở bên trong cho nó dễ hiểu
+- [ ] Đề xuất bước tiếp theo đang không hoạt động
+- [ ] Bấm vào tên user -> ra trang thông tin cá nhân
+- [ ] Sửa lại vị trí các tab ở sidebar -> cái gì quan trọng thì để lên trên
+- [ ] Học viên bôi đen bài học -> hiện tooltip -> đẩy nội dung vào hỏi với AI
