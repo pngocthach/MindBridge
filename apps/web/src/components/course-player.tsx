@@ -20,8 +20,9 @@ import {
 	Check,
 	CheckCircle2,
 	Clock3,
+	Sparkles,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
@@ -82,6 +83,10 @@ export function CoursePlayer({
 	const [selectedContentId, setSelectedContentId] = useState<
 		string | undefined
 	>(initialContentId);
+	const [askPrompt, setAskPrompt] = useState<{ nonce: number; text: string }>({
+		nonce: 0,
+		text: "",
+	});
 	const completeLesson = useMutation(
 		orpc.learner.completeLesson.mutationOptions({
 			onError: () => toast.error("Không thể cập nhật tiến độ. Hãy thử lại."),
@@ -236,6 +241,12 @@ export function CoursePlayer({
 							? () => setSelectedContentId(previousLesson.contentId)
 							: undefined
 					}
+					onAskSelection={(text) =>
+						setAskPrompt((previous) => ({
+							nonce: previous.nonce + 1,
+							text: `Giải thích giúp mình đoạn này trong bài học: "${text}"`,
+						}))
+					}
 					onQuizSubmitted={() =>
 						completeLesson.mutate({
 							classroomId,
@@ -255,6 +266,7 @@ export function CoursePlayer({
 					id: currentLesson.contentVersionId,
 					title: currentLesson.title,
 				}}
+				pendingPrompt={askPrompt}
 				skillProfile={{
 					level: getSkillLevel(currentLesson.metadata),
 					needsSupport: getMetadataStrings(
@@ -280,6 +292,7 @@ type LessonCardProps = {
 		title: string;
 	};
 	nextTitle?: string;
+	onAskSelection: (text: string) => void;
 	onComplete: () => void;
 	onNext?: () => void;
 	onPrevious?: () => void;
@@ -300,6 +313,7 @@ function LessonCard({
 	isCompleting,
 	lesson,
 	nextTitle,
+	onAskSelection,
 	onComplete,
 	onNext,
 	onPrevious,
@@ -316,6 +330,59 @@ function LessonCard({
 		includeQuiz: !bodyHasQuiz,
 	});
 	const durationMinutes = getMetadataNumber(lesson.metadata, "durationMinutes");
+	const contentRef = useRef<HTMLDivElement>(null);
+	const askButtonRef = useRef<HTMLButtonElement>(null);
+	const [selection, setSelection] = useState<{
+		text: string;
+		x: number;
+		y: number;
+	} | null>(null);
+
+	useEffect(() => {
+		const node = contentRef.current;
+		if (!node) {
+			return;
+		}
+		const onMouseUp = () => {
+			const activeSelection = window.getSelection();
+			if (!activeSelection || activeSelection.isCollapsed) {
+				setSelection(null);
+				return;
+			}
+			const text = activeSelection.toString().trim();
+			const anchorNode = activeSelection.anchorNode;
+			if (!(text && anchorNode) || text.length > 2000) {
+				setSelection(null);
+				return;
+			}
+			if (!node.contains(anchorNode)) {
+				setSelection(null);
+				return;
+			}
+			const rect = activeSelection.getRangeAt(0).getBoundingClientRect();
+			setSelection({ text, x: rect.left + rect.width / 2, y: rect.top });
+		};
+		node.addEventListener("mouseup", onMouseUp);
+		return () => node.removeEventListener("mouseup", onMouseUp);
+	}, [lessonMarkdown]);
+
+	useEffect(() => {
+		if (!selection) {
+			return;
+		}
+		const dismiss = (event: MouseEvent) => {
+			if (!askButtonRef.current?.contains(event.target as Node)) {
+				setSelection(null);
+			}
+		};
+		const dismissOnScroll = () => setSelection(null);
+		document.addEventListener("mousedown", dismiss);
+		document.addEventListener("scroll", dismissOnScroll, true);
+		return () => {
+			document.removeEventListener("mousedown", dismiss);
+			document.removeEventListener("scroll", dismissOnScroll, true);
+		};
+	}, [selection]);
 
 	return (
 		<Card className="overflow-hidden">
@@ -339,12 +406,30 @@ function LessonCard({
 			</CardHeader>
 			<CardContent>
 				{lessonMarkdown ? (
-					<MarkdownContent content={lessonMarkdown} />
+					<div ref={contentRef}>
+						<MarkdownContent content={lessonMarkdown} />
+					</div>
 				) : isQuiz ? null : (
 					<p className="text-muted-foreground text-sm">
 						Bài học này chưa có nội dung hiển thị.
 					</p>
 				)}
+				{selection ? (
+					<button
+						className="fixed z-50 flex -translate-x-1/2 -translate-y-full items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs shadow-lg transition hover:bg-primary/90"
+						onClick={() => {
+							onAskSelection(selection.text);
+							setSelection(null);
+							window.getSelection()?.removeAllRanges();
+						}}
+						ref={askButtonRef}
+						style={{ left: selection.x, top: selection.y - 8 }}
+						type="button"
+					>
+						<Sparkles aria-hidden="true" className="size-3.5" />
+						Hỏi Milo về đoạn này
+					</button>
+				) : null}
 				{isQuiz ? (
 					<div className={lessonMarkdown ? "mt-6 border-t pt-6" : undefined}>
 						<QuizRunner

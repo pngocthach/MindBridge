@@ -10,7 +10,7 @@ import {
 import { Textarea } from "@MindBridge/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { GraduationCap, Send, ShieldAlert, Sparkles, X } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import { orpc } from "@/utils/orpc";
 
@@ -34,13 +34,22 @@ type MiloSkillProfile = {
 export function MiloAssistant({
 	dialogKey,
 	lesson,
+	pendingPrompt,
 	skillProfile,
 }: {
 	dialogKey: string;
 	lesson: MiloLesson;
+	pendingPrompt?: { nonce: number; text: string };
 	skillProfile: MiloSkillProfile;
 }) {
 	const [isOpen, setIsOpen] = useState(false);
+
+	const promptNonce = pendingPrompt?.nonce ?? 0;
+	useEffect(() => {
+		if (promptNonce > 0) {
+			setIsOpen(true);
+		}
+	}, [promptNonce]);
 
 	return (
 		<>
@@ -91,7 +100,8 @@ export function MiloAssistant({
 							<X aria-hidden="true" />
 						</Button>
 						<MiloChat
-							key={dialogKey}
+							initialQuestion={pendingPrompt?.text ?? ""}
+							key={`${dialogKey}:${promptNonce}`}
 							lesson={lesson}
 							skillProfile={skillProfile}
 						/>
@@ -103,12 +113,13 @@ export function MiloAssistant({
 }
 
 type MiloChatProps = {
+	initialQuestion?: string;
 	lesson: MiloLesson;
 	skillProfile: MiloSkillProfile;
 };
 
-function MiloChat({ lesson, skillProfile }: MiloChatProps) {
-	const [question, setQuestion] = useState("");
+function MiloChat({ initialQuestion, lesson, skillProfile }: MiloChatProps) {
+	const [question, setQuestion] = useState(initialQuestion ?? "");
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const tutor = useMutation(orpc.tutor.ask.mutationOptions());
 

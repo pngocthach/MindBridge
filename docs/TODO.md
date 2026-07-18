@@ -28,4 +28,4 @@
 - [ ] Đề xuất bước tiếp theo đang không hoạt động
 - [x] Bấm vào tên user -> ra trang thông tin cá nhân
 - [ ] Sửa lại vị trí các tab ở sidebar -> cái gì quan trọng thì để lên trên
-- [ ] Học viên bôi đen bài học -> hiện tooltip -> đẩy nội dung vào hỏi với AI
+- [x] Học viên bôi đen bài học -> hiện tooltip -> đẩy nội dung vào hỏi với AI
