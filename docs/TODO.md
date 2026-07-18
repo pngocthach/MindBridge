@@ -17,7 +17,7 @@
 - [x] Cho user custom prompt lúc gen bài học (optional)
 - [x] Cái AI gen ra mới readonly, chưa edit được
 - [x] Thêm 1 cái feedback sau khi gen ra để có thể gen lại / gen tiếp
-- [ ] Cái lộ trình học chưa lấy được quizz ra
+- [x] Cái lộ trình học chưa lấy được quizz ra
 - [ ] Check cái lộ trình học xem còn tính năng gì cần thêm để hoàn thiện không
 - [ ] Đề xuất lộ trình thì phải gen ra tóm tắt kiến thức + quizz mới + chú ý vào phần đang sai + hiện trợ lý lên
 - [x] Con trợ lý chưa có enter để gửi

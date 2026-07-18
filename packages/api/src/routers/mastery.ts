@@ -129,42 +129,50 @@ export const masteryRouter = {
 				})),
 			};
 		}),
-	practice: protectedProcedure.handler(async () => {
-		const [item] = await db
-			.select({
-				contentTitle: learningContent.title,
-				contentVersionId: contentVersion.id,
-				explanation: assessmentItem.explanation,
-				id: assessmentItem.id,
-				prompt: assessmentItem.prompt,
-			})
-			.from(assessmentItem)
-			.innerJoin(
-				contentVersion,
-				and(
-					eq(contentVersion.id, assessmentItem.contentVersionId),
-					eq(contentVersion.status, "published"),
-				),
-			)
-			.innerJoin(
-				learningContent,
-				eq(learningContent.id, contentVersion.contentId),
-			)
-			.orderBy(asc(learningContent.title), asc(assessmentItem.ordinal))
-			.limit(1);
+	practice: protectedProcedure
+		.input(
+			z.object({ contentVersionId: z.string().uuid().optional() }).optional(),
+		)
+		.handler(async ({ input }) => {
+			const requestedContentVersionId = input?.contentVersionId;
+			const [item] = await db
+				.select({
+					contentTitle: learningContent.title,
+					contentVersionId: contentVersion.id,
+					explanation: assessmentItem.explanation,
+					id: assessmentItem.id,
+					prompt: assessmentItem.prompt,
+				})
+				.from(assessmentItem)
+				.innerJoin(
+					contentVersion,
+					and(
+						eq(contentVersion.id, assessmentItem.contentVersionId),
+						eq(contentVersion.status, "published"),
+						requestedContentVersionId
+							? eq(contentVersion.id, requestedContentVersionId)
+							: undefined,
+					),
+				)
+				.innerJoin(
+					learningContent,
+					eq(learningContent.id, contentVersion.contentId),
+				)
+				.orderBy(asc(learningContent.title), asc(assessmentItem.ordinal))
+				.limit(1);
 
-		if (!item) {
-			return null;
-		}
+			if (!item) {
+				return null;
+			}
 
-		const options = await db
-			.select({ id: assessmentOption.id, text: assessmentOption.text })
-			.from(assessmentOption)
-			.where(eq(assessmentOption.assessmentItemId, item.id))
-			.orderBy(asc(assessmentOption.ordinal));
+			const options = await db
+				.select({ id: assessmentOption.id, text: assessmentOption.text })
+				.from(assessmentOption)
+				.where(eq(assessmentOption.assessmentItemId, item.id))
+				.orderBy(asc(assessmentOption.ordinal));
 
-		return { ...item, options };
-	}),
+			return { ...item, options };
+		}),
 	profile: protectedProcedure.handler(async ({ context }) => {
 		const learnerId = context.session.user.id;
 		const [masteryRows, evidenceRows] = await Promise.all([

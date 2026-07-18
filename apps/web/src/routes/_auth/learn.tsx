@@ -28,10 +28,22 @@ export const Route = createFileRoute("/_auth/learn")({
 function LearnerPage() {
 	const queryClient = useQueryClient();
 	const profile = useQuery(orpc.mastery.profile.queryOptions());
-	const practice = useQuery(orpc.mastery.practice.queryOptions());
+	const [practiceContentVersionId, setPracticeContentVersionId] =
+		useState<string>();
+	const practice = useQuery(
+		orpc.mastery.practice.queryOptions({
+			input: { contentVersionId: practiceContentVersionId },
+		}),
+	);
 	const latest = useQuery(orpc.recommendation.latest.queryOptions());
 	const practiceStartedAt = useRef(Date.now());
 	const [selectedOptionId, setSelectedOptionId] = useState<string>();
+
+	const handlePracticeContent = (contentVersionId: string) => {
+		setPracticeContentVersionId(contentVersionId);
+		setSelectedOptionId(undefined);
+		practiceStartedAt.current = Date.now();
+	};
 	const generate = useMutation(
 		orpc.recommendation.generate.mutationOptions({
 			onError: () => toast.error("Không thể tạo đề xuất lúc này."),
@@ -194,6 +206,7 @@ function LearnerPage() {
 									{recommendations.map((recommendation) => (
 										<RecommendationCard
 											key={recommendation.id}
+											onPractice={handlePracticeContent}
 											recommendation={recommendation}
 										/>
 									))}
@@ -243,8 +256,10 @@ const recommendationStatusLabels = {
 } as const;
 
 function RecommendationCard({
+	onPractice,
 	recommendation,
 }: {
+	onPractice: (contentVersionId: string) => void;
 	recommendation: LearningRecommendation;
 }) {
 	const queryClient = useQueryClient();
@@ -292,13 +307,19 @@ function RecommendationCard({
 				</p>
 				<p className="mt-2 text-sm">{recommendation.reasonVi}</p>
 				<div className="mt-3 flex flex-wrap items-center gap-2">
-					<a
+					<button
 						className="inline-flex items-center font-medium text-primary text-xs underline-offset-4 hover:underline"
-						href="#quiz"
+						onClick={() => {
+							onPractice(recommendation.contentVersionId);
+							document
+								.getElementById("quiz")
+								?.scrollIntoView({ behavior: "smooth", block: "center" });
+						}}
+						type="button"
 					>
-						Mở khu vực luyện tập
+						Luyện tập kỹ năng này
 						<ArrowRight aria-hidden="true" className="ml-1 size-3" />
-					</a>
+					</button>
 					<Button
 						disabled={isResolved || updateStatus.isPending}
 						onClick={() =>
