@@ -16,6 +16,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen } from "lucide-react";
 import LearnerProfilePanel from "@/components/learner-profile-panel";
 import Loader from "@/components/loader";
+import { MiloAssistant } from "@/components/milo-assistant";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_auth/dashboard")({
@@ -173,6 +174,33 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 					isError={assignments.isError}
 				/>
 			)}
+			<MiloAssistant
+				dialogKey="dashboard"
+				lesson={{
+					content: `${
+						courseList.length > 0
+							? `Học viên đang tham gia các khóa: ${courseList
+									.map((course) => course.courseTitle)
+									.join(", ")}. `
+							: "Học viên chưa tham gia khóa học nào. "
+					}${
+						profile.data?.learningGoal
+							? `Mục tiêu học tập: ${profile.data.learningGoal}.`
+							: "Chưa đặt mục tiêu học tập."
+					}`,
+					id: "dashboard",
+					title: "Tổng quan học tập",
+				}}
+				skillProfile={{
+					level:
+						profile.data?.proficiencyLevel === "advanced" ||
+						profile.data?.proficiencyLevel === "intermediate"
+							? profile.data.proficiencyLevel
+							: "beginner",
+					needsSupport: [],
+					strengths: [],
+				}}
+			/>
 		</section>
 	);
 }
