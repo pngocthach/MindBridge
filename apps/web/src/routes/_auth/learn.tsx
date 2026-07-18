@@ -234,7 +234,7 @@ function LearnerPage() {
 								className="mt-0.5 size-4 shrink-0"
 							/>
 							Khoảng trống hiện tại:{" "}
-							{weakSkills.map((skill) => skill.skillName).join(",")}. Hãy làm
+							{weakSkills.map((skill) => skill.skillName).join(", ")}. Hãy làm
 							bài luyện tập và xem lại đề xuất sau mỗi lần nộp.
 						</p>
 					) : null}
