@@ -70,8 +70,8 @@ In **Settings → Environments → production**, add these environment secrets:
 
 Verify the VM host-key fingerprint through a trusted channel before saving
 `DEPLOY_SSH_KNOWN_HOSTS`; do not disable SSH host-key verification. The workflow
-resets tracked deployment code to `origin/main`, removes untracked non-ignored
-files, preserves ignored `deploy/.env.production`, and then runs:
+resets tracked deployment code to `origin/main`, removes stale untracked files
+under `deploy/`, preserves ignored `deploy/.env.production`, and then runs:
 
 ```bash
 docker compose --env-file .env.production up --build --detach --remove-orphans
