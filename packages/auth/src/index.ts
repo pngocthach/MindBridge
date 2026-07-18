@@ -1,4 +1,4 @@
-import { createDb } from "@MindBridge/db";
+import { db } from "@MindBridge/db";
 import * as schema from "@MindBridge/db/schema/auth";
 import { env } from "@MindBridge/env/server";
 import { betterAuth } from "better-auth";
@@ -7,8 +7,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { userRoles } from "./permissions";
 
 export function createAuth() {
-	const db = createDb();
-
 	return betterAuth({
 		advanced: {
 			defaultCookieAttributes: {
