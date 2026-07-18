@@ -6,7 +6,7 @@
 - [ ] Trang admin thừa tính năng thêm học liệu
 - [ ] Vào trang admin đang bị trống -> sửa lại route -> chuyển lại thành route admin + bỏ route dashboard
 - [ ] Làm lại flow tài liệu nguồn để bỏ bớt các bước kiểm duyệt cho nhanh
-- [ ] Bỏ tự lưu tài liệu khi up lên, chỉ lưu khi mà user bấm lưu thôi (luồng ở trên content studio)
+- [x] Bỏ tự lưu tài liệu khi up lên, chỉ lưu khi mà user bấm lưu thôi (luồng ở trên content studio)
 - [x] Thêm 1 cái nút sau khi gen ra thì gắn luôn vào khoá học
 - [x] UI quizz cho học viên + đánh giá cho học viên , đang để mỗi là text -> không tương tác với chọn được
 - [ ] Gen content có hình ảnh và các format khác

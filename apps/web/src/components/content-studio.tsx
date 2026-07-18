@@ -517,6 +517,7 @@ export default function ContentStudio({
 	const [prerequisites, setPrerequisites] = useState("");
 	const [skillIds, setSkillIds] = useState("");
 	const [pastedText, setPastedText] = useState("");
+	const [pendingFile, setPendingFile] = useState<File | null>(null);
 	const [sourceError, setSourceError] = useState("");
 	const [source, setSource] = useState<SourceDocument | null>(null);
 	const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
@@ -544,6 +545,7 @@ export default function ContentStudio({
 			onSuccess: (result) => {
 				setSource(result);
 				setSourceError("");
+				setPendingFile(null);
 			},
 		}),
 	);
@@ -769,16 +771,27 @@ export default function ContentStudio({
 								disabled={isSavingSource}
 								id="source-file"
 								onChange={(event) => {
-									const file = event.target.files?.[0];
-									if (file) {
-										upload.mutate({ file });
-									}
+									const file = event.target.files?.[0] ?? null;
+									setPendingFile(file);
+									setSource(null);
+									setSourceError("");
 								}}
 								type="file"
 							/>
 							<p className="text-muted-foreground text-xs">
 								Chấp nhận Markdown hoặc PDF có thể trích xuất văn bản.
 							</p>
+							{pendingFile ? (
+								<Button
+									className="w-full sm:w-auto"
+									disabled={isSavingSource}
+									onClick={() => upload.mutate({ file: pendingFile })}
+									type="button"
+									variant="outline"
+								>
+									{upload.isPending ? "Đang xử lý tài liệu…" : "Xử lý tài liệu"}
+								</Button>
+							) : null}
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="course-search">
