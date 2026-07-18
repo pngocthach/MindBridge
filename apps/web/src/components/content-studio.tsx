@@ -527,6 +527,8 @@ export default function ContentStudio({
 	const [assignmentDueAt, setAssignmentDueAt] = useState("");
 	const [assignmentError, setAssignmentError] = useState("");
 	const [assignmentStatus, setAssignmentStatus] = useState("");
+	const [attachError, setAttachError] = useState("");
+	const [attachStatus, setAttachStatus] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isGenerationComplete, setIsGenerationComplete] = useState(false);
 	const [generationStatus, setGenerationStatus] = useState("");
@@ -578,6 +580,16 @@ export default function ContentStudio({
 		}),
 	);
 
+	const addToCourse = useMutation(
+		orpc.contentWorkflow.addGeneratedToCourse.mutationOptions({
+			onError: (error) => setAttachError(error.message),
+			onSuccess: () => {
+				setAttachError("");
+				setAttachStatus("Đã xuất bản và thêm vào khóa học.");
+			},
+		}),
+	);
+
 	const sourceDetail = useQuery(
 		orpc.sourceDocuments.detail.queryOptions({
 			enabled: Boolean(source && isGenerationComplete),
@@ -602,6 +614,8 @@ export default function ContentStudio({
 		setSelectedClassroomId("");
 		setAssignmentError("");
 		setAssignmentStatus("");
+		setAttachError("");
+		setAttachStatus("");
 		setIsGenerationComplete(false);
 		setIsGenerating(true);
 		setGenerationError("");
@@ -973,6 +987,51 @@ export default function ContentStudio({
 									Bản xem trước sẽ mở khi AI hoàn tất cấu trúc bài học.
 								</p>
 							) : null}
+							{isGenerationComplete && generatedContent && draft ? (
+								<div className="space-y-3 border-t pt-4">
+									<div className="flex flex-wrap gap-3">
+										<Button
+											disabled={
+												addToCourse.isPending ||
+												publishAndAssign.isPending ||
+												Boolean(attachStatus) ||
+												Boolean(assignmentStatus)
+											}
+											onClick={() => {
+												setAttachError("");
+												addToCourse.mutate({
+													contentVersionId: generatedContent.contentVersionId,
+												});
+											}}
+											type="button"
+										>
+											{addToCourse.isPending ? "Đang gắn…" : "Gắn vào khóa học"}
+										</Button>
+										<Button
+											disabled={
+												!canGenerate ||
+												Boolean(attachStatus) ||
+												Boolean(assignmentStatus)
+											}
+											onClick={createDraft}
+											type="button"
+											variant="outline"
+										>
+											Tạo lại bản nháp
+										</Button>
+									</div>
+									{attachError ? (
+										<p className="text-destructive text-sm" role="alert">
+											{attachError}
+										</p>
+									) : null}
+									{attachStatus ? (
+										<p className="text-emerald-700 text-sm" role="status">
+											{attachStatus}
+										</p>
+									) : null}
+								</div>
+							) : null}
 							{canAssign &&
 							isGenerationComplete &&
 							generatedContent &&
@@ -1054,7 +1113,8 @@ export default function ContentStudio({
 										disabled={
 											!selectedClassroomId ||
 											publishAndAssign.isPending ||
-											Boolean(assignmentStatus)
+											Boolean(assignmentStatus) ||
+											Boolean(attachStatus)
 										}
 										onClick={() => {
 											setAssignmentError("");

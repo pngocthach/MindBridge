@@ -7,7 +7,7 @@
 - [ ] Vào trang admin đang bị trống -> sửa lại route -> chuyển lại thành route admin + bỏ route dashboard
 - [ ] Làm lại flow tài liệu nguồn để bỏ bớt các bước kiểm duyệt cho nhanh
 - [ ] Bỏ tự lưu tài liệu khi up lên, chỉ lưu khi mà user bấm lưu thôi (luồng ở trên content studio)
-- [ ] Thêm 1 cái nút sau khi gen ra thì gắn luôn vào khoá học
+- [x] Thêm 1 cái nút sau khi gen ra thì gắn luôn vào khoá học
 - [x] UI quizz cho học viên + đánh giá cho học viên , đang để mỗi là text -> không tương tác với chọn được
 - [ ] Gen content có hình ảnh và các format khác
 - [ ] Up tài liệu nguồn lên thì lúc nó parse ra thì nên có nút loading/thinking (có thể ở nút tạo bài học với AI) (giống claude)
@@ -16,7 +16,7 @@
 - [ ] Check lại mấy cái skill id xem có cần không
 - [ ] Cho user custom prompt lúc gen bài học (optional)
 - [ ] Cái AI gen ra mới readonly, chưa edit được
-- [ ] Thêm 1 cái feedback sau khi gen ra để có thể gen lại / gen tiếp
+- [x] Thêm 1 cái feedback sau khi gen ra để có thể gen lại / gen tiếp
 - [ ] Cái lộ trình học chưa lấy được quizz ra
 - [ ] Check cái lộ trình học xem còn tính năng gì cần thêm để hoàn thiện không
 - [ ] Đề xuất lộ trình thì phải gen ra tóm tắt kiến thức + quizz mới + chú ý vào phần đang sai + hiện trợ lý lên

@@ -1,11 +1,12 @@
 import {
 	contentReviewEvent,
 	contentVersion,
+	courseContent,
 	db,
 	learningContent,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, max, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../index";
@@ -214,6 +215,91 @@ const archiveVersion = async (
 	});
 
 export const contentWorkflowRouter = {
+	addGeneratedToCourse: permissionProcedure("content:create")
+		.input(z.object({ contentVersionId: z.string().uuid() }))
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				const [generated] = await transaction
+					.select({
+						contentId: contentVersion.contentId,
+						courseId: learningContent.courseId,
+						status: contentVersion.status,
+					})
+					.from(contentVersion)
+					.innerJoin(
+						learningContent,
+						eq(learningContent.id, contentVersion.contentId),
+					)
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.createdBy, context.session.user.id),
+						),
+					)
+					.limit(1);
+				if (!generated) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Không tìm thấy bản nháp bạn đã tạo.",
+					});
+				}
+				if (generated.status !== "draft") {
+					throw new ORPCError("CONFLICT", {
+						message: "Chỉ bản nháp mới có thể xuất bản và gắn vào khóa học.",
+					});
+				}
+
+				const reviewedAt = new Date();
+				const [publishedVersion] = await transaction
+					.update(contentVersion)
+					.set({
+						publishedAt: reviewedAt,
+						reviewedAt,
+						reviewedBy: context.session.user.id,
+						status: "published",
+					})
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.status, "draft"),
+						),
+					)
+					.returning({ id: contentVersion.id });
+				if (!publishedVersion) {
+					throw new ORPCError("CONFLICT", {
+						message: "Bản nháp đã đổi trạng thái trước khi xuất bản.",
+					});
+				}
+				await transaction.insert(contentReviewEvent).values({
+					actorId: context.session.user.id,
+					contentVersionId: publishedVersion.id,
+					fromStatus: "draft",
+					toStatus: "published",
+				});
+
+				const [existing] = await transaction
+					.select({ contentId: courseContent.contentId })
+					.from(courseContent)
+					.where(
+						and(
+							eq(courseContent.courseId, generated.courseId),
+							eq(courseContent.contentId, generated.contentId),
+						),
+					)
+					.limit(1);
+				if (!existing) {
+					const [lastPosition] = await transaction
+						.select({ value: max(courseContent.position) })
+						.from(courseContent)
+						.where(eq(courseContent.courseId, generated.courseId));
+					await transaction.insert(courseContent).values({
+						contentId: generated.contentId,
+						courseId: generated.courseId,
+						position: (lastPosition?.value ?? 0) + 1,
+					});
+				}
+				return { contentVersionId: publishedVersion.id };
+			}),
+		),
 	approve: permissionProcedure("content:review")
 		.input(transitionInput)
 		.handler(({ context, input }) => {
