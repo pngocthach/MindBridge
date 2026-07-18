@@ -15,7 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
-import { contentVersion } from "./content";
+import { contentVersion, learningContent } from "./content";
 import { classroom, classroomGroup, skill } from "./learning";
 
 /**
@@ -129,6 +129,30 @@ export const learningAttempt = pgTable(
 			"learning_attempt_score_range",
 			sql`${table.score} IS NULL OR (${table.score} >= 0 AND ${table.score} <= 1)`,
 		),
+	],
+);
+
+export const learnerLessonProgress = pgTable(
+	"learner_lesson_progress",
+	{
+		learnerId: text("learner_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		contentId: uuid("content_id")
+			.notNull()
+			.references(() => learningContent.id, { onDelete: "cascade" }),
+		completedAt: timestamp("completed_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at")
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		unique("learner_lesson_progress_unique").on(
+			table.learnerId,
+			table.contentId,
+		),
+		index("learner_lesson_progress_learner_idx").on(table.learnerId),
 	],
 );
 

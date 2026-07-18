@@ -4,19 +4,36 @@ import {
 	classroomGroup,
 	contentAssignment,
 	contentVersion,
+	course,
+	courseContent,
 	db,
 	learnerSkillMastery,
+	learningContent,
 	skill,
 	user,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { permissionProcedure } from "../index";
 
 const classroomInput = z.object({
 	classroomId: z.string().uuid().optional(),
+});
+
+const classroomIdInput = z.object({
+	classroomId: z.string().uuid(),
+});
+
+const classroomDetailsInput = z.object({
+	courseId: z.string().uuid(),
+	name: z.string().trim().min(1).max(120),
+});
+
+const enrollmentInput = z.object({
+	classroomId: z.string().uuid(),
+	email: z.string().trim().toLowerCase().email(),
 });
 
 const assignmentInput = z
@@ -45,15 +62,60 @@ const getTeacherClassrooms = async (
 
 	return db
 		.select({
+			courseTitle: course.title,
 			id: classroom.id,
 			name: classroom.name,
 			courseId: classroom.courseId,
 		})
 		.from(classroom)
+		.innerJoin(course, eq(course.id, classroom.courseId))
 		.where(and(...conditions));
 };
 
+const requireTeacherClassroom = async (
+	teacherId: string,
+	classroomId: string,
+) => {
+	const [ownedClassroom] = await getTeacherClassrooms(teacherId, classroomId);
+	if (!ownedClassroom) {
+		throw new ORPCError("NOT_FOUND", { message: "Classroom not found." });
+	}
+	return ownedClassroom;
+};
+
 export const teacherRouter = {
+	addEnrollment: permissionProcedure("class:read")
+		.input(enrollmentInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			const [learner] = await db
+				.select({ id: user.id, role: user.role })
+				.from(user)
+				.where(ilike(user.email, input.email))
+				.limit(1);
+			if (learner?.role !== "learner") {
+				throw new ORPCError("NOT_FOUND", {
+					message: "No learner account was found for this email.",
+				});
+			}
+
+			const [enrollment] = await db
+				.insert(classroomEnrollment)
+				.values({
+					classroomId: input.classroomId,
+					learnerId: learner.id,
+					status: "active",
+				})
+				.onConflictDoUpdate({
+					set: { status: "active" },
+					target: [
+						classroomEnrollment.classroomId,
+						classroomEnrollment.learnerId,
+					],
+				})
+				.returning();
+			return enrollment;
+		}),
 	assignContent: permissionProcedure("assignment:create")
 		.input(assignmentInput)
 		.handler(async ({ context, input }) => {
@@ -84,9 +146,31 @@ export const teacherRouter = {
 					context.session.user.id,
 					input.classroomId,
 				);
-				if (classrooms.length === 0) {
+				const [ownedClassroom] = classrooms;
+				if (!ownedClassroom) {
 					throw new ORPCError("FORBIDDEN", {
 						message: "You can only assign content to your own classrooms.",
+					});
+				}
+				const [courseContentVersion] = await db
+					.select({ id: contentVersion.id })
+					.from(contentVersion)
+					.innerJoin(
+						learningContent,
+						eq(learningContent.id, contentVersion.contentId),
+					)
+					.innerJoin(
+						courseContent,
+						and(
+							eq(courseContent.contentId, learningContent.id),
+							eq(courseContent.courseId, ownedClassroom.courseId),
+						),
+					)
+					.where(eq(contentVersion.id, input.contentVersionId))
+					.limit(1);
+				if (!courseContentVersion) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Học liệu không thuộc khóa học của lớp này.",
 					});
 				}
 				target = { classroomId: input.classroomId };
@@ -149,6 +233,101 @@ export const teacherRouter = {
 
 			return assignment;
 		}),
+	listAssignableContent: permissionProcedure("assignment:create")
+		.input(classroomIdInput)
+		.handler(async ({ context, input }) => {
+			const ownedClassroom = await requireTeacherClassroom(
+				context.session.user.id,
+				input.classroomId,
+			);
+			return db
+				.select({
+					id: contentVersion.id,
+					title: learningContent.title,
+				})
+				.from(courseContent)
+				.innerJoin(
+					learningContent,
+					eq(learningContent.id, courseContent.contentId),
+				)
+				.innerJoin(
+					contentVersion,
+					eq(contentVersion.contentId, learningContent.id),
+				)
+				.where(
+					and(
+						eq(courseContent.courseId, ownedClassroom.courseId),
+						eq(contentVersion.status, "published"),
+					),
+				)
+				.orderBy(asc(courseContent.position), asc(learningContent.title));
+		}),
+	archiveClassroom: permissionProcedure("class:read")
+		.input(classroomIdInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			const [archivedClassroom] = await db
+				.delete(classroom)
+				.where(
+					and(
+						eq(classroom.id, input.classroomId),
+						eq(classroom.teacherId, context.session.user.id),
+					),
+				)
+				.returning({ id: classroom.id });
+			return archivedClassroom;
+		}),
+	createClassroom: permissionProcedure("class:read")
+		.input(classroomDetailsInput)
+		.handler(async ({ context, input }) => {
+			const [selectedCourse] = await db
+				.select({ id: course.id })
+				.from(course)
+				.where(eq(course.id, input.courseId))
+				.limit(1);
+			if (!selectedCourse) {
+				throw new ORPCError("NOT_FOUND", { message: "Course not found." });
+			}
+			const [createdClassroom] = await db
+				.insert(classroom)
+				.values({
+					courseId: input.courseId,
+					name: input.name,
+					teacherId: context.session.user.id,
+				})
+				.returning();
+			return createdClassroom;
+		}),
+	deactivateEnrollment: permissionProcedure("class:read")
+		.input(enrollmentInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			const [enrollment] = await db
+				.select({ learnerId: classroomEnrollment.learnerId })
+				.from(classroomEnrollment)
+				.innerJoin(user, eq(user.id, classroomEnrollment.learnerId))
+				.where(
+					and(
+						eq(classroomEnrollment.classroomId, input.classroomId),
+						ilike(user.email, input.email),
+					),
+				)
+				.limit(1);
+			if (!enrollment) {
+				throw new ORPCError("NOT_FOUND", { message: "Enrollment not found." });
+			}
+			const [deactivatedEnrollment] = await db
+				.update(classroomEnrollment)
+				.set({ status: "withdrawn" })
+				.where(
+					and(
+						eq(classroomEnrollment.classroomId, input.classroomId),
+						eq(classroomEnrollment.learnerId, enrollment.learnerId),
+					),
+				)
+				.returning();
+			return deactivatedEnrollment;
+		}),
 	listClassrooms: permissionProcedure("class:read")
 		.input(classroomInput)
 		.handler(async ({ context, input }) => {
@@ -172,7 +351,12 @@ export const teacherRouter = {
 				})
 				.from(classroomEnrollment)
 				.innerJoin(user, eq(user.id, classroomEnrollment.learnerId))
-				.where(inArray(classroomEnrollment.classroomId, classroomIds));
+				.where(
+					and(
+						inArray(classroomEnrollment.classroomId, classroomIds),
+						eq(classroomEnrollment.status, "active"),
+					),
+				);
 			const learnerIds = enrollments.map(({ learnerId }) => learnerId);
 			const mastery = learnerIds.length
 				? await db
@@ -213,5 +397,52 @@ export const teacherRouter = {
 						learnerName,
 					})),
 			}));
+		}),
+	listCourseOptions: permissionProcedure("class:read").handler(() =>
+		db
+			.select({ id: course.id, title: course.title })
+			.from(course)
+			.orderBy(asc(course.title)),
+	),
+	listEnrollments: permissionProcedure("class:read")
+		.input(classroomIdInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			return db
+				.select({
+					createdAt: classroomEnrollment.createdAt,
+					email: user.email,
+					learnerId: classroomEnrollment.learnerId,
+					learnerName: user.name,
+					status: classroomEnrollment.status,
+				})
+				.from(classroomEnrollment)
+				.innerJoin(user, eq(user.id, classroomEnrollment.learnerId))
+				.where(eq(classroomEnrollment.classroomId, input.classroomId))
+				.orderBy(asc(user.name));
+		}),
+	updateClassroom: permissionProcedure("class:read")
+		.input(classroomDetailsInput.extend({ classroomId: z.string().uuid() }))
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			const [selectedCourse] = await db
+				.select({ id: course.id })
+				.from(course)
+				.where(eq(course.id, input.courseId))
+				.limit(1);
+			if (!selectedCourse) {
+				throw new ORPCError("NOT_FOUND", { message: "Course not found." });
+			}
+			const [updatedClassroom] = await db
+				.update(classroom)
+				.set({ courseId: input.courseId, name: input.name })
+				.where(
+					and(
+						eq(classroom.id, input.classroomId),
+						eq(classroom.teacherId, context.session.user.id),
+					),
+				)
+				.returning();
+			return updatedClassroom;
 		}),
 };

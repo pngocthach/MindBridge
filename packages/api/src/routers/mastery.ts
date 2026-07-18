@@ -3,9 +3,11 @@ import {
 	assessmentOption,
 	attemptResponse,
 	contentSkill,
+	contentVersion,
 	db,
 	learnerSkillMastery,
 	learningAttempt,
+	learningContent,
 	masteryEvidence,
 	skill,
 	skillPrerequisite,
@@ -16,21 +18,11 @@ import { z } from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../index";
 
-const errorTypes = [
-	"prerequisite_gap",
-	"skill_misconception",
-	"careless_error",
-	"time_pressure",
-	"unknown",
-] as const;
-
 const responseInput = z.object({
 	assessmentItemId: z.string().uuid(),
 	attemptNumber: z.number().int().positive(),
 	durationSeconds: z.number().int().nonnegative().optional(),
-	errorType: z.enum(errorTypes).default("unknown"),
-	isCorrect: z.boolean(),
-	selectedOptionId: z.string().uuid().optional(),
+	selectedOptionId: z.string().uuid(),
 });
 
 const submitAttemptInput = z
@@ -78,6 +70,42 @@ const evidenceWeight = (attemptNumber: number): number =>
 	roundMastery(Math.min(2, 1 + (attemptNumber - 1) * 0.25));
 
 export const masteryRouter = {
+	practice: protectedProcedure.handler(async () => {
+		const [item] = await db
+			.select({
+				contentTitle: learningContent.title,
+				contentVersionId: contentVersion.id,
+				explanation: assessmentItem.explanation,
+				id: assessmentItem.id,
+				prompt: assessmentItem.prompt,
+			})
+			.from(assessmentItem)
+			.innerJoin(
+				contentVersion,
+				and(
+					eq(contentVersion.id, assessmentItem.contentVersionId),
+					eq(contentVersion.status, "published"),
+				),
+			)
+			.innerJoin(
+				learningContent,
+				eq(learningContent.id, contentVersion.contentId),
+			)
+			.orderBy(asc(learningContent.title), asc(assessmentItem.ordinal))
+			.limit(1);
+
+		if (!item) {
+			return null;
+		}
+
+		const options = await db
+			.select({ id: assessmentOption.id, text: assessmentOption.text })
+			.from(assessmentOption)
+			.where(eq(assessmentOption.assessmentItemId, item.id))
+			.orderBy(asc(assessmentOption.ordinal));
+
+		return { ...item, options };
+	}),
 	profile: protectedProcedure.handler(async ({ context }) => {
 		const learnerId = context.session.user.id;
 		const [masteryRows, evidenceRows] = await Promise.all([
@@ -163,39 +191,36 @@ export const masteryRouter = {
 					});
 				}
 
-				const selectedOptionIds = sortedResponses.flatMap((response) =>
-					response.selectedOptionId ? [response.selectedOptionId] : [],
+				const selectedOptionIds = sortedResponses.map(
+					(response) => response.selectedOptionId,
 				);
-				if (selectedOptionIds.length > 0) {
-					const options = await transaction
-						.select({
-							assessmentItemId: assessmentOption.assessmentItemId,
-							id: assessmentOption.id,
-							isCorrect: assessmentOption.isCorrect,
-						})
-						.from(assessmentOption)
-						.where(inArray(assessmentOption.id, selectedOptionIds));
-					const optionsById = new Map(
-						options.map((option) => [option.id, option]),
-					);
-
-					for (const response of sortedResponses) {
-						if (!response.selectedOptionId) {
-							continue;
-						}
-						const option = optionsById.get(response.selectedOptionId);
-						if (
-							!option ||
-							option.assessmentItemId !== response.assessmentItemId ||
-							option.isCorrect !== response.isCorrect
-						) {
-							throw new ORPCError("BAD_REQUEST", {
-								message:
-									"A selected option is invalid or does not match its assessment item.",
-							});
-						}
+				const options = await transaction
+					.select({
+						assessmentItemId: assessmentOption.assessmentItemId,
+						id: assessmentOption.id,
+						isCorrect: assessmentOption.isCorrect,
+					})
+					.from(assessmentOption)
+					.where(inArray(assessmentOption.id, selectedOptionIds));
+				const optionsById = new Map(
+					options.map((option) => [option.id, option]),
+				);
+				const evaluatedResponses = sortedResponses.map((response) => {
+					const option = optionsById.get(response.selectedOptionId);
+					if (
+						!option ||
+						option.assessmentItemId !== response.assessmentItemId
+					) {
+						throw new ORPCError("BAD_REQUEST", {
+							message:
+								"A selected option is invalid or does not match its assessment item.",
+						});
 					}
-				}
+					return {
+						...response,
+						isCorrect: option.isCorrect,
+					};
+				});
 
 				const skillMappings = await transaction
 					.select({
@@ -225,8 +250,16 @@ export const masteryRouter = {
 				const prerequisiteIds = [
 					...new Set(prerequisiteRows.map((row) => row.prerequisiteSkillId)),
 				].sort();
+				const classifiedResponses = evaluatedResponses.map((response) => ({
+					...response,
+					errorType: response.isCorrect
+						? ("unknown" as const)
+						: prerequisiteIds.length > 0
+							? ("prerequisite_gap" as const)
+							: ("skill_misconception" as const),
+				}));
 
-				const correctResponseCount = sortedResponses.filter(
+				const correctResponseCount = classifiedResponses.filter(
 					(response) => response.isCorrect,
 				).length;
 				const [attempt] = await transaction
@@ -251,7 +284,7 @@ export const masteryRouter = {
 				const insertedResponses = await transaction
 					.insert(attemptResponse)
 					.values(
-						sortedResponses.map((response) => ({
+						classifiedResponses.map((response) => ({
 							assessmentItemId: response.assessmentItemId,
 							attemptId: attempt.id,
 							attemptNumber: response.attemptNumber,
@@ -273,7 +306,7 @@ export const masteryRouter = {
 				);
 
 				const evidenceValues: EvidenceValue[] = [];
-				for (const response of sortedResponses) {
+				for (const response of classifiedResponses) {
 					const responseId = insertedResponseByItem.get(
 						response.assessmentItemId,
 					);

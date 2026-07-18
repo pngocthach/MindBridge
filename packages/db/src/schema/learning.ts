@@ -43,6 +43,7 @@ export const course = pgTable(
 			.notNull()
 			.references(() => user.id, { onDelete: "restrict" }),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
+		archivedAt: timestamp("archived_at"),
 		updatedAt: timestamp("updated_at")
 			.defaultNow()
 			.$onUpdate(() => new Date())

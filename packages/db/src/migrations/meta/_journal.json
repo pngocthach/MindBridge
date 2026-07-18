@@ -15,6 +15,20 @@
 			"when": 1784293931735,
 			"tag": "0001_fixed_emma_frost",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1784341888179,
+			"tag": "0002_cloudy_tana_nile",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1784342500670,
+			"tag": "0003_parched_zaladane",
+			"breakpoints": true
 		}
 	]
 }

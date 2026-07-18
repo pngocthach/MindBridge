@@ -20,14 +20,19 @@ import { CourseCatalogService } from "./service/course-catalog/service";
 import { LocalPythonDocumentConverter } from "./service/document-ingestion/converter";
 import { DocumentIngestionService } from "./service/document-ingestion/service";
 
+const contentGenerationApiKey =
+	env.OPENAI_COMPATIBLE_API_KEY ?? env.TUTOR_LLM_API_KEY;
+const contentGenerationBaseUrl =
+	env.OPENAI_COMPATIBLE_BASE_URL ?? env.TUTOR_LLM_BASE_URL;
+const contentGenerationModel =
+	env.OPENAI_COMPATIBLE_MODEL ?? env.TUTOR_LLM_MODEL;
+
 const lessonGenerationService =
-	env.OPENAI_COMPATIBLE_API_KEY &&
-	env.OPENAI_COMPATIBLE_BASE_URL &&
-	env.OPENAI_COMPATIBLE_MODEL
+	contentGenerationApiKey && contentGenerationBaseUrl && contentGenerationModel
 		? new LessonGenerationService({
-				apiKey: env.OPENAI_COMPATIBLE_API_KEY,
-				baseUrl: env.OPENAI_COMPATIBLE_BASE_URL,
-				model: env.OPENAI_COMPATIBLE_MODEL,
+				apiKey: contentGenerationApiKey,
+				baseUrl: contentGenerationBaseUrl,
+				model: contentGenerationModel,
 			})
 		: new LessonGenerationService();
 

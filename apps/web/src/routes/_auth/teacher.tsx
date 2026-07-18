@@ -14,7 +14,7 @@ import {
 } from "@MindBridge/ui/components/empty";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
@@ -24,22 +24,24 @@ export const Route = createFileRoute("/_auth/teacher")({
 	component: TeacherPage,
 });
 
+const fieldClassName =
+	"h-9 w-full border border-input bg-background px-3 text-sm";
+
 function TeacherPage() {
 	const { session } = Route.useRouteContext();
+	const isTeacher = session.data?.user.role === "teacher";
 	const classrooms = useQuery(
 		orpc.teacher.listClassrooms.queryOptions({
-			enabled: session.data?.user.role === "teacher",
+			enabled: isTeacher,
 			input: {},
 		}),
 	);
-	const published = useQuery(
-		orpc.contentWorkflow.listPublished.queryOptions({
-			enabled: session.data?.user.role === "teacher",
-		}),
+	const courseOptions = useQuery(
+		orpc.teacher.listCourseOptions.queryOptions({ enabled: isTeacher }),
 	);
 	const [selectedClassroomId, setSelectedClassroomId] = useState<string>();
 
-	if (session.data?.user.role !== "teacher") {
+	if (!isTeacher) {
 		return (
 			<section
 				className="border border-destructive/30 bg-destructive/10 p-6"
@@ -52,10 +54,10 @@ function TeacherPage() {
 			</section>
 		);
 	}
-	if (classrooms.isPending || published.isPending) {
+	if (classrooms.isPending || courseOptions.isPending) {
 		return <Loader />;
 	}
-	if (classrooms.isError || published.isError) {
+	if (classrooms.isError || courseOptions.isError) {
 		return (
 			<section
 				className="border border-destructive/30 bg-destructive/10 p-6"
@@ -68,22 +70,11 @@ function TeacherPage() {
 			</section>
 		);
 	}
-	if (classrooms.data.length === 0) {
-		return (
-			<Empty>
-				<EmptyHeader>
-					<EmptyTitle>Chưa có lớp phụ trách</EmptyTitle>
-					<EmptyDescription>
-						Lớp được phân công sẽ hiển thị tại đây.
-					</EmptyDescription>
-				</EmptyHeader>
-			</Empty>
-		);
-	}
 
 	const activeClassroom =
 		classrooms.data.find(({ id }) => id === selectedClassroomId) ??
 		classrooms.data[0];
+
 	return (
 		<section aria-labelledby="teacher-title" className="space-y-6">
 			<header>
@@ -91,25 +82,45 @@ function TeacherPage() {
 					Lớp của tôi
 				</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
-					Theo dõi lỗ hổng kỹ năng và giao học liệu đã xuất bản.
+					Quản lý lớp, học viên và giao học liệu đã xuất bản.
 				</p>
 			</header>
-			<div className="flex flex-wrap gap-2" role="tablist">
-				{classrooms.data.map((classroom) => (
-					<Button
-						aria-selected={classroom.id === activeClassroom.id}
-						key={classroom.id}
-						onClick={() => setSelectedClassroomId(classroom.id)}
-						type="button"
-						variant={
-							classroom.id === activeClassroom.id ? "default" : "outline"
-						}
-					>
-						{classroom.name}
-					</Button>
-				))}
-			</div>
-			<ClassroomCard classroom={activeClassroom} published={published.data} />
+			<CreateClassroomForm courseOptions={courseOptions.data} />
+			{classrooms.data.length === 0 ? (
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>Chưa có lớp phụ trách</EmptyTitle>
+						<EmptyDescription>
+							Tạo lớp đầu tiên bằng biểu mẫu phía trên.
+						</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
+			) : null}
+			{activeClassroom ? (
+				<>
+					<div className="flex flex-wrap gap-2" role="tablist">
+						{classrooms.data.map((classroom) => (
+							<Button
+								aria-selected={classroom.id === activeClassroom.id}
+								key={classroom.id}
+								onClick={() => setSelectedClassroomId(classroom.id)}
+								role="tab"
+								type="button"
+								variant={
+									classroom.id === activeClassroom.id ? "default" : "outline"
+								}
+							>
+								{classroom.name}
+							</Button>
+						))}
+					</div>
+					<ClassroomCard
+						classroom={activeClassroom}
+						courseOptions={courseOptions.data}
+						key={activeClassroom.id}
+					/>
+				</>
+			) : null}
 		</section>
 	);
 }
@@ -117,107 +128,462 @@ function TeacherPage() {
 type Classroom = Awaited<
 	ReturnType<typeof orpc.teacher.listClassrooms.call>
 >[number];
-type PublishedVersion = Awaited<
-	ReturnType<typeof orpc.contentWorkflow.listPublished.call>
+type CourseOption = Awaited<
+	ReturnType<typeof orpc.teacher.listCourseOptions.call>
 >[number];
-
-function ClassroomCard({
-	classroom,
-	published,
+function CreateClassroomForm({
+	courseOptions,
 }: {
-	classroom: Classroom;
-	published: PublishedVersion[];
+	courseOptions: CourseOption[];
 }) {
 	const queryClient = useQueryClient();
-	const [contentVersionId, setContentVersionId] = useState("");
-	const assignment = useMutation({
-		...orpc.teacher.assignContent.mutationOptions(),
+	const [name, setName] = useState("");
+	const [courseId, setCourseId] = useState("");
+	const createClassroom = useMutation({
+		...orpc.teacher.createClassroom.mutationOptions(),
 		onSuccess: async () => {
+			setName("");
+			setCourseId("");
 			await queryClient.invalidateQueries({
 				queryKey: orpc.teacher.listClassrooms.key(),
 			});
+			toast.success("Đã tạo lớp học");
+		},
+	});
+	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!name.trim() || !courseId) return;
+		createClassroom.mutate({ courseId, name });
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Tạo lớp học</CardTitle>
+				<CardDescription>
+					Chọn khóa học làm nội dung nền cho lớp.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<form
+					className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+					onSubmit={handleSubmit}
+				>
+					<div>
+						<label className="text-sm" htmlFor="new-classroom-name">
+							Tên lớp
+						</label>
+						<input
+							className={fieldClassName}
+							id="new-classroom-name"
+							maxLength={120}
+							onChange={(event) => setName(event.target.value)}
+							required
+							value={name}
+						/>
+					</div>
+					<div>
+						<label className="text-sm" htmlFor="new-classroom-course">
+							Khóa học
+						</label>
+						<select
+							className={fieldClassName}
+							id="new-classroom-course"
+							onChange={(event) => setCourseId(event.target.value)}
+							required
+							value={courseId}
+						>
+							<option value="">Chọn khóa học</option>
+							{courseOptions.map((option) => (
+								<option key={option.id} value={option.id}>
+									{option.title}
+								</option>
+							))}
+						</select>
+					</div>
+					<Button
+						className="self-end"
+						disabled={createClassroom.isPending || courseOptions.length === 0}
+						type="submit"
+					>
+						{createClassroom.isPending ? "Đang tạo…" : "Tạo lớp"}
+					</Button>
+				</form>
+				{courseOptions.length === 0 ? (
+					<p className="mt-2 text-muted-foreground text-xs">
+						Chưa có khóa học để tạo lớp.
+					</p>
+				) : null}
+				{createClassroom.isError ? (
+					<p className="mt-2 text-destructive text-xs" role="alert">
+						Không thể tạo lớp. Hãy kiểm tra thông tin và thử lại.
+					</p>
+				) : null}
+			</CardContent>
+		</Card>
+	);
+}
+
+function ClassroomCard({
+	classroom,
+	courseOptions,
+}: {
+	classroom: Classroom;
+	courseOptions: CourseOption[];
+}) {
+	const queryClient = useQueryClient();
+	const [contentVersionId, setContentVersionId] = useState("");
+	const [learnerEmail, setLearnerEmail] = useState("");
+	const [name, setName] = useState(classroom.name);
+	const [courseId, setCourseId] = useState(classroom.courseId);
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
+	const enrollments = useQuery(
+		orpc.teacher.listEnrollments.queryOptions({
+			input: { classroomId: classroom.id },
+		}),
+	);
+	const assignableContent = useQuery(
+		orpc.teacher.listAssignableContent.queryOptions({
+			input: { classroomId: classroom.id },
+		}),
+	);
+	const invalidateClassroomData = async () => {
+		await Promise.all([
+			queryClient.invalidateQueries({
+				queryKey: orpc.teacher.listClassrooms.key(),
+			}),
+			queryClient.invalidateQueries({
+				queryKey: orpc.teacher.listEnrollments.key(),
+			}),
+		]);
+	};
+	const assignment = useMutation({
+		...orpc.teacher.assignContent.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateClassroomData();
 			toast.success("Đã giao học liệu cho lớp");
 		},
 	});
+	const addEnrollment = useMutation({
+		...orpc.teacher.addEnrollment.mutationOptions(),
+		onSuccess: async () => {
+			setLearnerEmail("");
+			await invalidateClassroomData();
+			toast.success("Đã thêm học viên vào lớp");
+		},
+	});
+	const deactivateEnrollment = useMutation({
+		...orpc.teacher.deactivateEnrollment.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateClassroomData();
+			toast.success("Đã ngừng ghi danh học viên");
+		},
+	});
+	const updateClassroom = useMutation({
+		...orpc.teacher.updateClassroom.mutationOptions(),
+		onSuccess: async () => {
+			setContentVersionId("");
+			setIsEditing(false);
+			await invalidateClassroomData();
+			await queryClient.invalidateQueries({
+				queryKey: orpc.teacher.listAssignableContent.key(),
+			});
+			toast.success("Đã cập nhật lớp học");
+		},
+	});
+	const archiveClassroom = useMutation({
+		...orpc.teacher.archiveClassroom.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateClassroomData();
+			toast.success("Đã lưu trữ lớp học");
+		},
+	});
+
 	const handleAssign = () => {
 		if (!contentVersionId) return;
 		assignment.mutate({ classroomId: classroom.id, contentVersionId });
 	};
+	const handleEnrollment = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!learnerEmail.trim()) return;
+		addEnrollment.mutate({ classroomId: classroom.id, email: learnerEmail });
+	};
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!name.trim() || !courseId) return;
+		updateClassroom.mutate({ classroomId: classroom.id, courseId, name });
+	};
+	const gapsByLearnerId = new Map(
+		classroom.learners.map((learner) => [learner.learnerId, learner.gaps]),
+	);
 
 	return (
-		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+		<div className="space-y-4">
 			<Card>
 				<CardHeader>
-					<CardTitle>{classroom.name}</CardTitle>
-					<CardDescription>
-						{classroom.learners.length} học viên
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{classroom.learners.length === 0 ? (
-						<p className="text-muted-foreground">Lớp chưa có học viên.</p>
-					) : (
-						<ul className="space-y-3">
-							{classroom.learners.map((learner) => (
-								<li
-									className="border-b pb-3 last:border-0"
-									key={learner.learnerId}
-								>
-									<p className="font-medium">{learner.learnerName}</p>
-									<p className="mt-1 text-muted-foreground text-xs">
-										{learner.gaps.length > 0
-											? `Cần hỗ trợ: ${learner.gaps.map(({ skillName }) => skillName).join(", ")}`
-											: "Chưa ghi nhận lỗ hổng kỹ năng"}
-									</p>
-								</li>
-							))}
-						</ul>
-					)}
-				</CardContent>
-			</Card>
-			<Card>
-				<CardHeader>
-					<CardTitle>Giao học liệu</CardTitle>
-					<CardDescription>Chỉ hiển thị nội dung đã xuất bản.</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-3">
-					{published.length === 0 ? (
-						<p className="text-muted-foreground">Chưa có học liệu published.</p>
-					) : null}
-					{published.length > 0 ? (
-						<>
-							<label className="sr-only" htmlFor="published-content">
-								Chọn học liệu
-							</label>
-							<select
-								className="h-8 w-full border border-input bg-background px-2 text-xs"
-								id="published-content"
-								onChange={(event) => setContentVersionId(event.target.value)}
-								value={contentVersionId}
-							>
-								<option value="">Chọn học liệu</option>
-								{published.map((version) => (
-									<option key={version.id} value={version.id}>
-										{version.title}
-									</option>
-								))}
-							</select>
+					<div className="flex flex-wrap items-start justify-between gap-3">
+						<div>
+							<CardTitle>{classroom.name}</CardTitle>
+							<CardDescription>
+								{classroom.courseTitle} · {classroom.learners.length} học viên
+								đang học
+							</CardDescription>
+						</div>
+						<div className="flex gap-2">
 							<Button
-								disabled={!contentVersionId || assignment.isPending}
-								onClick={handleAssign}
+								onClick={() => setIsEditing((current) => !current)}
 								type="button"
+								variant="outline"
 							>
-								{assignment.isPending ? "Đang giao…" : "Giao cho cả lớp"}
+								{isEditing ? "Hủy sửa" : "Chỉnh sửa"}
 							</Button>
-							{assignment.isError ? (
-								<p className="text-destructive text-xs" role="alert">
-									Không thể giao học liệu. Hãy thử lại.
-								</p>
-							) : null}
-						</>
-					) : null}
-				</CardContent>
+							<Button
+								disabled={archiveClassroom.isPending}
+								onClick={() => {
+									if (isConfirmingArchive) {
+										archiveClassroom.mutate({ classroomId: classroom.id });
+										return;
+									}
+									setIsConfirmingArchive(true);
+								}}
+								type="button"
+								variant="destructive"
+							>
+								{archiveClassroom.isPending
+									? "Đang lưu trữ…"
+									: isConfirmingArchive
+										? "Xác nhận lưu trữ"
+										: "Lưu trữ"}
+							</Button>
+						</div>
+					</div>
+				</CardHeader>
+				{isEditing ? (
+					<CardContent>
+						<form
+							className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+							onSubmit={handleUpdate}
+						>
+							<div>
+								<label
+									className="text-sm"
+									htmlFor={`classroom-name-${classroom.id}`}
+								>
+									Tên lớp
+								</label>
+								<input
+									className={fieldClassName}
+									id={`classroom-name-${classroom.id}`}
+									maxLength={120}
+									onChange={(event) => setName(event.target.value)}
+									required
+									value={name}
+								/>
+							</div>
+							<div>
+								<label
+									className="text-sm"
+									htmlFor={`classroom-course-${classroom.id}`}
+								>
+									Khóa học
+								</label>
+								<select
+									className={fieldClassName}
+									id={`classroom-course-${classroom.id}`}
+									onChange={(event) => setCourseId(event.target.value)}
+									value={courseId}
+								>
+									{courseOptions.map((option) => (
+										<option key={option.id} value={option.id}>
+											{option.title}
+										</option>
+									))}
+								</select>
+							</div>
+							<Button
+								className="self-end"
+								disabled={updateClassroom.isPending}
+								type="submit"
+							>
+								{updateClassroom.isPending ? "Đang lưu…" : "Lưu thay đổi"}
+							</Button>
+						</form>
+						{updateClassroom.isError ? (
+							<p className="mt-2 text-destructive text-xs" role="alert">
+								Không thể cập nhật lớp.
+							</p>
+						) : null}
+					</CardContent>
+				) : null}
+				{archiveClassroom.isError ? (
+					<CardContent>
+						<p className="text-destructive text-xs" role="alert">
+							Không thể lưu trữ lớp.
+						</p>
+					</CardContent>
+				) : null}
 			</Card>
+
+			<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+				<Card>
+					<CardHeader>
+						<CardTitle>Học viên</CardTitle>
+						<CardDescription>
+							Thêm học viên bằng email tài khoản.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<form className="flex gap-2" onSubmit={handleEnrollment}>
+							<div className="flex-1">
+								<label
+									className="sr-only"
+									htmlFor={`learner-email-${classroom.id}`}
+								>
+									Email học viên
+								</label>
+								<input
+									className={fieldClassName}
+									id={`learner-email-${classroom.id}`}
+									onChange={(event) => setLearnerEmail(event.target.value)}
+									placeholder="hocvien@example.com"
+									required
+									type="email"
+									value={learnerEmail}
+								/>
+							</div>
+							<Button disabled={addEnrollment.isPending} type="submit">
+								{addEnrollment.isPending ? "Đang thêm…" : "Thêm"}
+							</Button>
+						</form>
+						{addEnrollment.isError ? (
+							<p className="text-destructive text-xs" role="alert">
+								Không tìm thấy tài khoản học viên hoặc không thể ghi danh.
+							</p>
+						) : null}
+						{enrollments.isPending ? (
+							<p className="text-muted-foreground text-sm">
+								Đang tải học viên…
+							</p>
+						) : null}
+						{enrollments.isError ? (
+							<p className="text-destructive text-xs" role="alert">
+								Không thể tải danh sách học viên.
+							</p>
+						) : null}
+						{enrollments.data?.length === 0 ? (
+							<p className="text-muted-foreground">Lớp chưa có học viên.</p>
+						) : null}
+						{enrollments.data?.length ? (
+							<ul className="space-y-3">
+								{enrollments.data.map((enrollment) => {
+									const gaps = gapsByLearnerId.get(enrollment.learnerId) ?? [];
+									return (
+										<li
+											className="border-b pb-3 last:border-0"
+											key={enrollment.learnerId}
+										>
+											<div className="flex items-start justify-between gap-3">
+												<div>
+													<p className="font-medium">
+														{enrollment.learnerName}
+													</p>
+													<p className="text-muted-foreground text-xs">
+														{enrollment.email}
+													</p>
+													<p className="mt-1 text-muted-foreground text-xs">
+														{enrollment.status !== "active"
+															? "Đã ngừng ghi danh"
+															: gaps.length > 0
+																? `Cần hỗ trợ: ${gaps.map(({ skillName }) => skillName).join(", ")}`
+																: "Chưa ghi nhận lỗ hổng kỹ năng"}
+													</p>
+												</div>
+												{enrollment.status === "active" ? (
+													<Button
+														disabled={deactivateEnrollment.isPending}
+														onClick={() =>
+															deactivateEnrollment.mutate({
+																classroomId: classroom.id,
+																email: enrollment.email,
+															})
+														}
+														size="sm"
+														type="button"
+														variant="outline"
+													>
+														Ngừng ghi danh
+													</Button>
+												) : null}
+											</div>
+										</li>
+									);
+								})}
+							</ul>
+						) : null}
+						{deactivateEnrollment.isError ? (
+							<p className="text-destructive text-xs" role="alert">
+								Không thể ngừng ghi danh học viên.
+							</p>
+						) : null}
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader>
+						<CardTitle>Giao học liệu</CardTitle>
+						<CardDescription>
+							Chỉ hiển thị nội dung đã xuất bản.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-3">
+						{assignableContent.isPending ? (
+							<p className="text-muted-foreground">Đang tải học liệu…</p>
+						) : null}
+						{assignableContent.isError ? (
+							<p className="text-destructive text-sm" role="alert">
+								Không thể tải học liệu của khóa học này.
+							</p>
+						) : null}
+						{assignableContent.data?.length === 0 ? (
+							<p className="text-muted-foreground">
+								Khóa học này chưa có học liệu đã xuất bản trong chương trình.
+							</p>
+						) : null}
+						{assignableContent.data && assignableContent.data.length > 0 ? (
+							<>
+								<label className="sr-only" htmlFor="published-content">
+									Chọn học liệu
+								</label>
+								<select
+									className={fieldClassName}
+									id="published-content"
+									onChange={(event) => setContentVersionId(event.target.value)}
+									value={contentVersionId}
+								>
+									<option value="">Chọn học liệu</option>
+									{assignableContent.data.map((version) => (
+										<option key={version.id} value={version.id}>
+											{version.title}
+										</option>
+									))}
+								</select>
+								<Button
+									disabled={!contentVersionId || assignment.isPending}
+									onClick={handleAssign}
+									type="button"
+								>
+									{assignment.isPending ? "Đang giao…" : "Giao cho cả lớp"}
+								</Button>
+								{assignment.isError ? (
+									<p className="text-destructive text-xs" role="alert">
+										{assignment.error.message}
+									</p>
+								) : null}
+							</>
+						) : null}
+					</CardContent>
+				</Card>
+			</div>
 		</div>
 	);
 }
