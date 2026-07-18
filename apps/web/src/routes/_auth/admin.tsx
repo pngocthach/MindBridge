@@ -222,17 +222,10 @@ function AdminConsoleContent() {
 						</p>
 					</div>
 					<div className="flex flex-wrap gap-2">
-						<a
-							className={buttonVariants({ variant: "outline" })}
-							href="#admin-users"
-						>
+						<a className={buttonVariants()} href="#admin-users">
 							<Users aria-hidden="true" />
 							Quản lý người dùng
 						</a>
-						<Link className={buttonVariants()} to="/content-studio">
-							Mở Content Studio
-							<ChevronRight aria-hidden="true" data-icon="inline-end" />
-						</Link>
 					</div>
 				</div>
 			</header>
@@ -484,7 +477,7 @@ function AdminConsoleContent() {
 									</EmptyTitle>
 									<EmptyDescription>
 										{versions.length === 0
-											? "Bắt đầu trong Content Studio để tạo học liệu đầu tiên."
+											? "Học liệu do giáo viên và biên tập viên tạo sẽ xuất hiện ở đây để chờ kiểm duyệt."
 											: "Hãy đổi từ khóa hoặc xóa bớt bộ lọc."}
 									</EmptyDescription>
 								</EmptyHeader>
@@ -496,11 +489,7 @@ function AdminConsoleContent() {
 									>
 										Xóa toàn bộ bộ lọc
 									</Button>
-								) : (
-									<Link className={buttonVariants()} to="/content-studio">
-										Tạo học liệu
-									</Link>
-								)}
+								) : null}
 							</Empty>
 						) : null}
 
