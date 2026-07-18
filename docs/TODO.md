@@ -22,10 +22,10 @@
 - [ ] Đề xuất lộ trình thì phải gen ra tóm tắt kiến thức + quizz mới + chú ý vào phần đang sai + hiện trợ lý lên
 - [ ] Con trợ lý chưa có enter để gửi
 - [ ] Sửa lại UI khoá học của học viên (làm giống coursera)
-- [ ] Sidebar chưa đóng vào được
-- [ ] Sửa nút ở sidebar + màu padding nhìn cho đẹp
+- [x] Sidebar chưa đóng vào được
+- [x] Sửa nút ở sidebar + màu padding nhìn cho đẹp
 - [ ] Wording các cái thuật ngữ ở bên trong cho nó dễ hiểu
 - [ ] Đề xuất bước tiếp theo đang không hoạt động
-- [ ] Bấm vào tên user -> ra trang thông tin cá nhân
+- [x] Bấm vào tên user -> ra trang thông tin cá nhân
 - [ ] Sửa lại vị trí các tab ở sidebar -> cái gì quan trọng thì để lên trên
 - [ ] Học viên bôi đen bài học -> hiện tooltip -> đẩy nội dung vào hỏi với AI
