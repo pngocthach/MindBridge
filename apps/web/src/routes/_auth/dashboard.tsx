@@ -20,7 +20,6 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	BookOpen,
-	Bot,
 	Check,
 	CheckCircle2,
 	Clock3,
@@ -31,11 +30,14 @@ import {
 	X,
 } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import LearnerProfilePanel from "@/components/learner-profile-panel";
 import Loader from "@/components/loader";
+import MarkdownContent from "@/components/markdown-content";
+import {
+	contentValueToText,
+	getLessonMarkdown,
+} from "@/utils/content-markdown";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_auth/dashboard")({
@@ -69,148 +71,8 @@ type LearnerAssignment = Awaited<
 	ReturnType<typeof orpc.assignments.listInbox.call>
 >[number];
 
-type ContentBlock = { text: string; title?: string };
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
-
-const valueToText = (value: unknown): string => {
-	if (typeof value === "string") {
-		return value;
-	}
-	if (typeof value === "number" || typeof value === "boolean") {
-		return String(value);
-	}
-	if (Array.isArray(value)) {
-		return value.map(valueToText).filter(Boolean).join("\n");
-	}
-	if (isRecord(value)) {
-		return Object.values(value).map(valueToText).filter(Boolean).join("\n");
-	}
-	return "";
-};
-
-const getContentBlocks = (body: unknown): ContentBlock[] => {
-	if (!isRecord(body)) {
-		const text = valueToText(body);
-		return text ? [{ text }] : [];
-	}
-
-	const sections = body.sections;
-	if (Array.isArray(sections)) {
-		const sectionBlocks = sections.flatMap((section) => {
-			if (!isRecord(section)) {
-				const text = valueToText(section);
-				return text ? [{ text }] : [];
-			}
-			const text = valueToText(section.content ?? section.text);
-			return text
-				? [
-						{
-							text,
-							title:
-								typeof section.title === "string" ? section.title : undefined,
-						},
-					]
-				: [];
-		});
-		if (sectionBlocks.length > 0) {
-			return sectionBlocks;
-		}
-	}
-
-	const fieldLabels: Record<string, string> = {
-		instructions: "Hướng dẫn",
-		successCriteria: "Tiêu chí hoàn thành",
-	};
-	const blocks: ContentBlock[] = [];
-	for (const [key, value] of Object.entries(body)) {
-		const text = valueToText(value);
-		if (text) {
-			blocks.push({ text, title: fieldLabels[key] });
-		}
-	}
-	return blocks;
-};
-
-const getLessonMarkdown = (body: unknown): string => {
-	if (!isRecord(body)) {
-		return valueToText(body);
-	}
-
-	const sections: string[] = [];
-	const summary = typeof body.summary === "string" ? body.summary.trim() : "";
-	if (summary) {
-		sections.push(`## Tóm tắt\n\n${summary}`);
-	}
-
-	const objectives = Array.isArray(body.objectives)
-		? body.objectives.filter(isRecord)
-		: [];
-	if (objectives.length > 0) {
-		sections.push(
-			`## Mục tiêu học tập\n\n${objectives
-				.map((objective) => `- ${valueToText(objective.text)}`)
-				.join("\n")}`,
-		);
-	}
-
-	const exercises = Array.isArray(body.exercises)
-		? body.exercises.filter(isRecord)
-		: [];
-	if (exercises.length > 0) {
-		sections.push(
-			`## Bài tập\n\n${exercises
-				.map((exercise, index) => {
-					const difficulty =
-						valueToText(exercise.difficulty) === "EASY" ? "Dễ" : "Chuẩn";
-					const prompt = valueToText(exercise.prompt);
-					const expectedAnswer = valueToText(exercise.expected_answer);
-					const explanation = valueToText(exercise.explanation);
-					return `### ${index + 1}. Bài tập ${difficulty}\n\n${prompt}${
-						expectedAnswer ? `\n\n**Đáp án tham khảo:** ${expectedAnswer}` : ""
-					}${explanation ? `\n\n**Giải thích:** ${explanation}` : ""}`;
-				})
-				.join("\n\n")}`,
-		);
-	}
-
-	const quizQuestions = Array.isArray(body.quiz_questions)
-		? body.quiz_questions.filter(isRecord)
-		: [];
-	if (quizQuestions.length > 0) {
-		sections.push(
-			`## Kiểm tra kiến thức\n\n${quizQuestions
-				.map((question, index) => {
-					const options = Array.isArray(question.options)
-						? question.options
-								.map((option) => `- ${valueToText(option)}`)
-								.join("\n")
-						: "";
-					return `### Câu ${index + 1}. ${valueToText(question.question)}\n\n${options}${
-						question.correct_answer
-							? `\n\n**Đáp án:** ${valueToText(question.correct_answer)}`
-							: ""
-					}${
-						question.explanation
-							? `\n\n**Giải thích:** ${valueToText(question.explanation)}`
-							: ""
-					}`;
-				})
-				.join("\n\n")}`,
-		);
-	}
-
-	if (sections.length > 0) {
-		return sections.join("\n\n---\n\n");
-	}
-
-	return getContentBlocks(body)
-		.map((block) =>
-			block.title ? `## ${block.title}\n\n${block.text}` : block.text,
-		)
-		.join("\n\n---\n\n");
-};
 
 const getMetadataNumber = (
 	metadata: unknown,
@@ -316,34 +178,66 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 	const courseList = courses.data ?? [];
 	const activeClassroomId =
 		selectedClassroomId ?? courseList.at(0)?.classroomId;
+	const averageProgress =
+		courseList.length === 0
+			? 0
+			: Math.round(
+					courseList.reduce(
+						(total, course) => total + course.progressPercent,
+						0,
+					) / courseList.length,
+				);
+	const completedCourses = courseList.filter(
+		(course) => course.progressPercent >= 100,
+	).length;
 
 	return (
-		<section aria-labelledby="course-dashboard-title" className="space-y-6">
-			<header>
-				<div className="flex items-center gap-2 font-medium text-primary text-xs uppercase tracking-widest">
-					<BookOpen aria-hidden="true" className="size-4" />
-					Khóa học được giao
-				</div>
-				<h1
-					className="mt-2 font-semibold text-3xl tracking-tight"
-					id="course-dashboard-title"
-				>
-					Xin chào, {learnerName}
-				</h1>
-				<p className="mt-2 text-muted-foreground text-sm">
-					Tiếp tục bài chưa hoàn thành và hỏi Milo bất cứ lúc nào.
-				</p>
-			</header>
-			<LearnerProfilePanel learnerName={learnerName} profile={profile.data} />
-			<AssignmentInbox
-				assignments={assignments.data ?? []}
-				isError={assignments.isError}
-				onOpenAssignment={(classroomId, contentId) => {
-					setSelectedClassroomId(classroomId);
-					setSelectedContentId(contentId);
-				}}
-			/>
-
+		<section
+			aria-labelledby="course-dashboard-title"
+			className="space-y-5 rounded-2xl bg-gradient-to-br from-blue-50/70 via-white to-cyan-50/50 p-3 md:p-5"
+		>
+			<Card className="relative overflow-hidden border-blue-100 bg-gradient-to-r from-white to-blue-50/80">
+				<div className="absolute -right-12 -bottom-24 size-64 rounded-full bg-cyan-200/30 blur-3xl" />
+				<CardContent className="relative flex flex-wrap items-center justify-between gap-6 p-6 md:p-8">
+					<div>
+						<div className="flex items-center gap-2 font-bold text-primary text-xs uppercase tracking-widest">
+							<BookOpen aria-hidden="true" className="size-4" />
+							Không gian học tập
+						</div>
+						<h1
+							className="mt-2 font-extrabold text-3xl tracking-tight md:text-4xl"
+							id="course-dashboard-title"
+						>
+							Xin chào, {learnerName}
+						</h1>
+						<p className="mt-2 max-w-xl text-muted-foreground text-sm">
+							Tiếp tục bài học gần nhất và hỏi Milo bất cứ lúc nào.
+						</p>
+					</div>
+					<div className="flex items-center gap-3">
+						<div className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
+							<p className="font-extrabold text-primary text-2xl">
+								{averageProgress}%
+							</p>
+							<p className="text-muted-foreground text-[11px]">tiến độ chung</p>
+						</div>
+						<div className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
+							<p className="font-extrabold text-primary text-2xl">
+								{completedCourses}
+							</p>
+							<p className="text-muted-foreground text-[11px]">đã hoàn thành</p>
+						</div>
+						<img
+							alt=""
+							aria-hidden="true"
+							className="hidden w-24 drop-shadow-lg sm:block"
+							height="1536"
+							src="/images/milo-mascot.png"
+							width="1024"
+						/>
+					</div>
+				</CardContent>
+			</Card>
 			{courseList.length === 0 ? (
 				<Empty className="border">
 					<EmptyHeader>
@@ -373,6 +267,17 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 					) : null}
 				</div>
 			)}
+			<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,.7fr)]">
+				<AssignmentInbox
+					assignments={assignments.data ?? []}
+					isError={assignments.isError}
+					onOpenAssignment={(classroomId, contentId) => {
+						setSelectedClassroomId(classroomId);
+						setSelectedContentId(contentId);
+					}}
+				/>
+				<LearnerProfilePanel learnerName={learnerName} profile={profile.data} />
+			</div>
 		</section>
 	);
 }
@@ -415,7 +320,7 @@ function AssignmentInbox({
 								assignment.dueAt < new Date();
 							return (
 								<li
-									className="flex flex-wrap items-center justify-between gap-3 border-b pb-3 last:border-0"
+									className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/30 p-3"
 									key={assignment.id}
 								>
 									<div>
@@ -473,16 +378,32 @@ function CourseList({
 	onSelect: (classroomId: string) => void;
 	selectedClassroomId: string | undefined;
 }) {
+	const coursePalettes = [
+		"border-blue-200/80 bg-blue-50/90",
+		"border-emerald-200/80 bg-emerald-100/75",
+		"border-indigo-200/80 bg-indigo-50/90",
+		"border-sky-200/80 bg-sky-100/75",
+	] as const;
 	return (
-		<nav aria-label="Khóa học được giao" className="space-y-3">
-			<h2 className="font-semibold text-sm">Khóa học của bạn</h2>
-			{courses.map((courseItem) => {
+		<nav
+			aria-label="Khóa học được giao"
+			className="space-y-3 rounded-2xl border border-blue-100 bg-white/80 p-3 shadow-sm"
+		>
+			<div className="px-2 pb-1">
+				<h2 className="font-bold text-base">Khóa học của bạn</h2>
+				<p className="mt-1 text-muted-foreground text-xs">
+					Chọn khóa học để tiếp tục
+				</p>
+			</div>
+			{courses.map((courseItem, index) => {
 				const isSelected = courseItem.classroomId === selectedClassroomId;
 				return (
 					<button
 						aria-current={isSelected ? "true" : undefined}
-						className={`w-full border p-4 text-left transition-colors hover:border-primary/60 ${
-							isSelected ? "border-primary bg-primary/5" : "bg-background"
+						className={`w-full rounded-3xl border p-4 text-left shadow-[inset_0_2px_0_oklch(1_0_0/65%),0_10px_18px_oklch(0.45_0.08_300/12%)] transition-all hover:-translate-y-1 hover:shadow-[inset_0_2px_0_oklch(1_0_0/75%),0_14px_22px_oklch(0.45_0.08_300/18%)] ${
+							isSelected
+								? "border-primary bg-primary/15 ring-2 ring-primary/25"
+								: coursePalettes[index % coursePalettes.length]
 						}`}
 						key={courseItem.classroomId}
 						onClick={() => onSelect(courseItem.classroomId)}
@@ -693,9 +614,16 @@ function CoursePlayer({
 				onClick={() => setIsMiloOpen(true)}
 				type="button"
 			>
-				<span className="relative flex size-11 items-center justify-center rounded-full bg-white/15">
+				<span className="relative flex size-12 items-center justify-center overflow-hidden rounded-full bg-white">
 					<span className="absolute inset-0 animate-ping rounded-full bg-white/20" />
-					<Bot aria-hidden="true" className="relative size-6" />
+					<img
+						alt=""
+						aria-hidden="true"
+						className="relative mt-3 w-10 scale-125"
+						height="1536"
+						src="/images/milo-mascot.png"
+						width="1024"
+					/>
 				</span>
 				<span className="hidden text-left sm:block">
 					<span className="block font-semibold text-sm">Milo AI</span>
@@ -727,7 +655,8 @@ function CoursePlayer({
 						<MiloChat
 							key={currentLesson.contentId}
 							lesson={{
-								content: valueToText(currentLesson.body) || currentLesson.title,
+								content:
+									contentValueToText(currentLesson.body) || currentLesson.title,
 								id: currentLesson.contentVersionId,
 								title: currentLesson.title,
 							}}
@@ -807,85 +736,7 @@ function LessonCard({
 			</CardHeader>
 			<CardContent>
 				{lessonMarkdown ? (
-					<article className="mx-auto max-w-3xl text-foreground">
-						<ReactMarkdown
-							components={{
-								a: ({ children, href }) => (
-									<a
-										className="font-medium text-primary underline underline-offset-4"
-										href={href}
-										rel="noopener noreferrer"
-										target="_blank"
-									>
-										{children}
-									</a>
-								),
-								blockquote: ({ children }) => (
-									<blockquote className="my-5 border-primary border-l-4 bg-primary/5 px-5 py-3 text-muted-foreground italic">
-										{children}
-									</blockquote>
-								),
-								code: ({ children }) => (
-									<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground">
-										{children}
-									</code>
-								),
-								h1: ({ children }) => (
-									<h1 className="mt-8 mb-4 font-bold text-3xl tracking-tight">
-										{children}
-									</h1>
-								),
-								h2: ({ children }) => (
-									<h2 className="mt-8 mb-3 border-b pb-2 font-semibold text-2xl tracking-tight">
-										{children}
-									</h2>
-								),
-								h3: ({ children }) => (
-									<h3 className="mt-6 mb-2 font-semibold text-xl">
-										{children}
-									</h3>
-								),
-								hr: () => <hr className="my-8 border-border" />,
-								li: ({ children }) => <li className="pl-1">{children}</li>,
-								ol: ({ children }) => (
-									<ol className="my-4 list-decimal space-y-2 pl-6 leading-7">
-										{children}
-									</ol>
-								),
-								p: ({ children }) => (
-									<p className="my-4 text-[15px] leading-8">{children}</p>
-								),
-								pre: ({ children }) => (
-									<pre className="my-5 overflow-x-auto rounded-lg bg-slate-950 p-4 text-slate-50 text-sm">
-										{children}
-									</pre>
-								),
-								table: ({ children }) => (
-									<div className="my-5 overflow-x-auto">
-										<table className="w-full border-collapse text-sm">
-											{children}
-										</table>
-									</div>
-								),
-								td: ({ children }) => (
-									<td className="border px-3 py-2 align-top">{children}</td>
-								),
-								th: ({ children }) => (
-									<th className="border bg-muted px-3 py-2 text-left font-semibold">
-										{children}
-									</th>
-								),
-								ul: ({ children }) => (
-									<ul className="my-4 list-disc space-y-2 pl-6 leading-7">
-										{children}
-									</ul>
-								),
-							}}
-							remarkPlugins={[remarkGfm]}
-						>
-							{lessonMarkdown}
-						</ReactMarkdown>
-					</article>
+					<MarkdownContent content={lessonMarkdown} />
 				) : (
 					<p className="text-muted-foreground text-sm">
 						Bài học này chưa có nội dung hiển thị.

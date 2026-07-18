@@ -79,18 +79,18 @@ export default function LearnerProfilePanel({
 
 	if (!(isEditing || profile === null)) {
 		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Hồ sơ học tập</CardTitle>
-					<CardDescription>
-						Lớp {profile.gradeLevel} ·{" "}
-						{proficiencyLabels[values.proficiencyLevel]}
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<p className="text-sm">{profile.learningGoal}</p>
-				</CardContent>
-				<CardFooter className="justify-end">
+			<Card className="h-full">
+				<CardContent className="flex h-full flex-wrap items-center justify-between gap-4 p-5">
+					<div className="min-w-0">
+						<CardTitle>Hồ sơ học tập</CardTitle>
+						<CardDescription className="mt-1">
+							Lớp {profile.gradeLevel} ·{" "}
+							{proficiencyLabels[values.proficiencyLevel]}
+						</CardDescription>
+						<p className="mt-3 line-clamp-2 text-muted-foreground text-sm">
+							{profile.learningGoal}
+						</p>
+					</div>
 					<Button
 						onClick={() => setIsEditing(true)}
 						type="button"
@@ -98,7 +98,7 @@ export default function LearnerProfilePanel({
 					>
 						Chỉnh sửa hồ sơ
 					</Button>
-				</CardFooter>
+				</CardContent>
 			</Card>
 		);
 	}
