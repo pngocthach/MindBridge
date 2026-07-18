@@ -16,6 +16,7 @@ import {
 	TooltipTrigger,
 } from "@MindBridge/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import MarkdownContent from "@/components/markdown-content";
@@ -791,8 +792,31 @@ export default function ContentStudio({
 									type="button"
 									variant="outline"
 								>
-									{upload.isPending ? "Đang xử lý tài liệu…" : "Xử lý tài liệu"}
+									{upload.isPending ? (
+										<>
+											<Loader2
+												aria-hidden="true"
+												className="animate-spin"
+												data-icon="inline-start"
+											/>
+											Đang xử lý tài liệu…
+										</>
+									) : (
+										"Xử lý tài liệu"
+									)}
 								</Button>
+							) : null}
+							{isSavingSource ? (
+								<div
+									aria-live="polite"
+									className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-primary text-sm"
+									role="status"
+								>
+									<Loader2 aria-hidden="true" className="size-4 animate-spin" />
+									<span>
+										AI đang đọc và trích xuất nội dung tài liệu, vui lòng đợi…
+									</span>
+								</div>
 							) : null}
 						</div>
 						<div className="space-y-2">
@@ -1001,7 +1025,18 @@ export default function ContentStudio({
 									type="button"
 									variant="outline"
 								>
-									Dùng nội dung đã dán
+									{paste.isPending ? (
+										<>
+											<Loader2
+												aria-hidden="true"
+												className="animate-spin"
+												data-icon="inline-start"
+											/>
+											Đang xử lý…
+										</>
+									) : (
+										"Dùng nội dung đã dán"
+									)}
 								</Button>
 							</div>
 						</div>
@@ -1013,7 +1048,18 @@ export default function ContentStudio({
 						onClick={createDraft}
 						type="button"
 					>
-						{isGenerating ? "Đang tạo bản nháp…" : "Tạo bài học với AI"}
+						{isGenerating ? (
+							<>
+								<Loader2
+									aria-hidden="true"
+									className="animate-spin"
+									data-icon="inline-start"
+								/>
+								Đang tạo bản nháp…
+							</>
+						) : (
+							"Tạo bài học với AI"
+						)}
 					</Button>
 					{!canGenerate && !isGenerating && (
 						<p className="text-muted-foreground text-sm">
