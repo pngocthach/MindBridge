@@ -4,6 +4,7 @@ import {
 	classroomGroup,
 	classroomGroupMember,
 	contentAssignment,
+	contentReviewEvent,
 	contentVersion,
 	course,
 	courseContent,
@@ -15,7 +16,7 @@ import {
 	user,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 
 import { permissionProcedure } from "../index";
@@ -65,6 +66,12 @@ const assignmentInput = z
 				.length === 1,
 		{ message: "Choose exactly one classroom, group, or learner target." },
 	);
+
+const publishGeneratedLessonInput = z.object({
+	classroomId: z.string().uuid(),
+	contentVersionId: z.string().uuid(),
+	dueAt: z.coerce.date().optional(),
+});
 
 const feedbackIdInput = z.object({ feedbackId: z.string().uuid() });
 
@@ -234,6 +241,123 @@ export const teacherRouter = {
 				.returning();
 			return enrollment;
 		}),
+	publishAndAssignGeneratedLesson: teacherProcedure
+		.input(publishGeneratedLessonInput)
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				const [ownedClassroom] = await transaction
+					.select({ courseId: classroom.courseId })
+					.from(classroom)
+					.where(
+						and(
+							eq(classroom.id, input.classroomId),
+							eq(classroom.teacherId, context.session.user.id),
+						),
+					)
+					.limit(1);
+				if (!ownedClassroom) {
+					throw new ORPCError("FORBIDDEN", {
+						message: "You can only assign content to your own classrooms.",
+					});
+				}
+
+				const [generatedVersion] = await transaction
+					.select({
+						contentId: contentVersion.contentId,
+						courseId: learningContent.courseId,
+						status: contentVersion.status,
+					})
+					.from(contentVersion)
+					.innerJoin(
+						learningContent,
+						eq(learningContent.id, contentVersion.contentId),
+					)
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.createdBy, context.session.user.id),
+						),
+					)
+					.limit(1);
+				if (!generatedVersion) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Generated lesson draft not found.",
+					});
+				}
+				if (generatedVersion.status !== "draft") {
+					throw new ORPCError("CONFLICT", {
+						message: "Only generated drafts can be published and assigned.",
+					});
+				}
+				if (generatedVersion.courseId !== ownedClassroom.courseId) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Học liệu không thuộc khóa học của lớp này.",
+					});
+				}
+
+				const reviewedAt = new Date();
+				const [publishedVersion] = await transaction
+					.update(contentVersion)
+					.set({
+						publishedAt: reviewedAt,
+						reviewedAt,
+						reviewedBy: context.session.user.id,
+						status: "published",
+					})
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.status, "draft"),
+						),
+					)
+					.returning({ id: contentVersion.id });
+				if (!publishedVersion) {
+					throw new ORPCError("CONFLICT", {
+						message: "Draft status changed before it could be assigned.",
+					});
+				}
+
+				await transaction.insert(contentReviewEvent).values({
+					actorId: context.session.user.id,
+					contentVersionId: publishedVersion.id,
+					fromStatus: "draft",
+					toStatus: "published",
+				});
+				const [lastPosition] = await transaction
+					.select({ value: max(courseContent.position) })
+					.from(courseContent)
+					.where(eq(courseContent.courseId, ownedClassroom.courseId));
+				const [curriculumItem] = await transaction
+					.insert(courseContent)
+					.values({
+						contentId: generatedVersion.contentId,
+						courseId: ownedClassroom.courseId,
+						position: (lastPosition?.value ?? 0) + 1,
+					})
+					.returning();
+				if (!curriculumItem) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Learning content could not be added to the course.",
+					});
+				}
+
+				const [assignment] = await transaction
+					.insert(contentAssignment)
+					.values({
+						assignedBy: context.session.user.id,
+						classroomId: input.classroomId,
+						contentVersionId: publishedVersion.id,
+						dueAt: input.dueAt,
+					})
+					.returning();
+				if (!assignment) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Learning content could not be assigned.",
+					});
+				}
+				return { assignment, curriculumItem, publishedVersion };
+			}),
+		),
 	assignContent: permissionProcedure("assignment:create")
 		.input(assignmentInput)
 		.handler(async ({ context, input }) => {

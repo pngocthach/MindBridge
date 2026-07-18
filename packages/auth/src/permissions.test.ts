@@ -9,8 +9,9 @@ describe("application roles", () => {
 		}
 	});
 
-	it("allows teachers to upload sources without content workflow access", () => {
+	it("allows teachers to create content without general publishing access", () => {
 		expect(hasPermission("teacher", "source:upload")).toBe(true);
+		expect(hasPermission("teacher", "content:create")).toBe(true);
 		expect(hasPermission("teacher", "content:update")).toBe(false);
 		expect(hasPermission("teacher", "content:publish")).toBe(false);
 	});

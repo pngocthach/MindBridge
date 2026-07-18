@@ -1,6 +1,6 @@
-import { course, db } from "@MindBridge/db";
+import { classroom, course, db } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, asc, desc, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, exists, ilike, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { adminProcedure, permissionProcedure } from "../index";
@@ -110,7 +110,19 @@ export const courseRouter = {
 						isNull(course.archivedAt),
 						context.role === "admin"
 							? undefined
-							: eq(course.createdBy, context.session.user.id),
+							: context.role === "teacher"
+								? exists(
+										db
+											.select({ id: classroom.id })
+											.from(classroom)
+											.where(
+												and(
+													eq(classroom.courseId, course.id),
+													eq(classroom.teacherId, context.session.user.id),
+												),
+											),
+									)
+								: eq(course.createdBy, context.session.user.id),
 						input.query
 							? or(
 									ilike(course.title, searchPattern),
