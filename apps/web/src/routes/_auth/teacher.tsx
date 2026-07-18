@@ -86,6 +86,7 @@ function TeacherPage() {
 				</p>
 			</header>
 			<CreateClassroomForm courseOptions={courseOptions.data} />
+			<AssignmentManager />
 			{classrooms.data.length === 0 ? (
 				<Empty>
 					<EmptyHeader>
@@ -136,6 +137,9 @@ type Enrollment = Awaited<
 >[number];
 type ClassroomGroup = Awaited<
 	ReturnType<typeof orpc.teacher.listGroups.call>
+>[number];
+type TeacherAssignment = Awaited<
+	ReturnType<typeof orpc.assignments.listTeacher.call>
 >[number];
 function CreateClassroomForm({
 	courseOptions,
@@ -239,6 +243,7 @@ function ClassroomCard({
 }) {
 	const queryClient = useQueryClient();
 	const [contentVersionId, setContentVersionId] = useState("");
+	const [assignmentDueAt, setAssignmentDueAt] = useState("");
 	const [learnerEmail, setLearnerEmail] = useState("");
 	const [name, setName] = useState(classroom.name);
 	const [courseId, setCourseId] = useState(classroom.courseId);
@@ -267,7 +272,14 @@ function ClassroomCard({
 	const assignment = useMutation({
 		...orpc.teacher.assignContent.mutationOptions(),
 		onSuccess: async () => {
-			await invalidateClassroomData();
+			setAssignmentDueAt("");
+			setContentVersionId("");
+			await Promise.all([
+				invalidateClassroomData(),
+				queryClient.invalidateQueries({
+					queryKey: orpc.assignments.listTeacher.key(),
+				}),
+			]);
 			toast.success("Đã giao học liệu cho lớp");
 		},
 	});
@@ -308,7 +320,13 @@ function ClassroomCard({
 
 	const handleAssign = () => {
 		if (!contentVersionId) return;
-		assignment.mutate({ classroomId: classroom.id, contentVersionId });
+		assignment.mutate({
+			classroomId: classroom.id,
+			contentVersionId,
+			dueAt: assignmentDueAt
+				? new Date(`${assignmentDueAt}T23:59:59`)
+				: undefined,
+		});
 	};
 	const handleEnrollment = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -573,6 +591,19 @@ function ClassroomCard({
 										</option>
 									))}
 								</select>
+								<label
+									className="text-muted-foreground text-xs"
+									htmlFor={`assignment-due-${classroom.id}`}
+								>
+									Hạn nộp (không bắt buộc)
+								</label>
+								<input
+									className={fieldClassName}
+									id={`assignment-due-${classroom.id}`}
+									onChange={(event) => setAssignmentDueAt(event.target.value)}
+									type="date"
+									value={assignmentDueAt}
+								/>
 								<Button
 									disabled={!contentVersionId || assignment.isPending}
 									onClick={handleAssign}
@@ -865,5 +896,158 @@ function GroupCard({
 				</p>
 			) : null}
 		</section>
+	);
+}
+
+const toDateInputValue = (date: Date | null): string => {
+	if (!date) return "";
+	const timezoneOffset = date.getTimezoneOffset() * 60_000;
+	return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
+function AssignmentManager() {
+	const assignments = useQuery(orpc.assignments.listTeacher.queryOptions());
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Bài đã giao</CardTitle>
+				<CardDescription>
+					Theo dõi, đổi hạn nộp hoặc xóa bài tập bạn đã giao.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{assignments.isPending ? (
+					<p className="text-muted-foreground text-sm">Đang tải bài đã giao…</p>
+				) : null}
+				{assignments.isError ? (
+					<p className="text-destructive text-xs" role="alert">
+						Không thể tải danh sách bài đã giao.
+					</p>
+				) : null}
+				{assignments.data?.length === 0 ? (
+					<p className="text-muted-foreground text-sm">
+						Chưa có bài tập nào được giao.
+					</p>
+				) : null}
+				{assignments.data?.length ? (
+					<ul className="space-y-3">
+						{assignments.data.map((assignment) => (
+							<AssignmentRow assignment={assignment} key={assignment.id} />
+						))}
+					</ul>
+				) : null}
+			</CardContent>
+		</Card>
+	);
+}
+
+function AssignmentRow({ assignment }: { assignment: TeacherAssignment }) {
+	const queryClient = useQueryClient();
+	const [dueAt, setDueAt] = useState(toDateInputValue(assignment.dueAt));
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+	const invalidateAssignments = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.assignments.listTeacher.key(),
+		});
+	};
+	const updateAssignment = useMutation({
+		...orpc.assignments.update.mutationOptions(),
+		onSuccess: async () => {
+			setIsEditing(false);
+			await invalidateAssignments();
+			toast.success("Đã cập nhật hạn nộp");
+		},
+	});
+	const deleteAssignment = useMutation({
+		...orpc.assignments.delete.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateAssignments();
+			toast.success("Đã xóa bài được giao");
+		},
+	});
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		updateAssignment.mutate({
+			assignmentId: assignment.id,
+			dueAt: dueAt ? new Date(`${dueAt}T23:59:59`) : null,
+		});
+	};
+	const targetLabels = {
+		classroom: "Lớp",
+		group: "Nhóm",
+		learner: "Học viên",
+	} as const;
+
+	return (
+		<li className="border-b pb-3 last:border-0">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p className="font-medium text-sm">{assignment.title}</p>
+					<p className="text-muted-foreground text-xs">
+						{targetLabels[assignment.targetType]}: {assignment.targetName}
+						{" · "}
+						{assignment.dueAt
+							? `Hạn ${assignment.dueAt.toLocaleDateString("vi-VN")}`
+							: "Không có hạn nộp"}
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => setIsEditing((current) => !current)}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy sửa" : "Sửa hạn"}
+					</Button>
+					<Button
+						disabled={deleteAssignment.isPending}
+						onClick={() => {
+							if (isConfirmingDelete) {
+								deleteAssignment.mutate({ assignmentId: assignment.id });
+								return;
+							}
+							setIsConfirmingDelete(true);
+						}}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						{deleteAssignment.isPending
+							? "Đang xóa…"
+							: isConfirmingDelete
+								? "Xác nhận xóa"
+								: "Xóa"}
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form className="mt-3 flex gap-2" onSubmit={handleUpdate}>
+					<label
+						className="sr-only"
+						htmlFor={`assignment-due-${assignment.id}`}
+					>
+						Hạn nộp
+					</label>
+					<input
+						className={fieldClassName}
+						id={`assignment-due-${assignment.id}`}
+						onChange={(event) => setDueAt(event.target.value)}
+						type="date"
+						value={dueAt}
+					/>
+					<Button disabled={updateAssignment.isPending} size="sm" type="submit">
+						Lưu
+					</Button>
+				</form>
+			) : null}
+			{updateAssignment.isError || deleteAssignment.isError ? (
+				<p className="mt-2 text-destructive text-xs" role="alert">
+					Không thể cập nhật bài đã giao.
+				</p>
+			) : null}
+		</li>
 	);
 }

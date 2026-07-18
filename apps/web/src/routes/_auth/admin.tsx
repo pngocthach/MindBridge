@@ -31,6 +31,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
+import SkillGraphManager from "@/components/skill-graph-manager";
 import { orpc } from "@/utils/orpc";
 
 const statuses = [
@@ -154,6 +155,7 @@ function AdminConsoleContent() {
 			</header>
 
 			<UserManagement />
+			<SkillGraphManager />
 
 			{isLoading ? <Loader /> : null}
 			{isError ? (

@@ -5,7 +5,7 @@ import {
 	learningContent,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../index";
@@ -19,6 +19,29 @@ const statuses = [
 ] as const;
 const statusSchema = z.enum(statuses);
 type ContentStatus = (typeof statuses)[number];
+const contentKindSchema = z.enum(["lesson", "quiz", "practice"]);
+
+const contentIdInput = z.object({ contentId: z.string().uuid() });
+
+const draftValues = z.object({
+	body: z.record(z.string(), z.unknown()),
+	metadata: z.record(z.string(), z.unknown()),
+	title: z.string().trim().min(1).max(255),
+});
+
+const createDraftInput = draftValues.extend({
+	courseId: z.string().uuid(),
+	kind: contentKindSchema,
+});
+
+const createVersionDraftInput = z.object({
+	contentId: z.string().uuid(),
+	sourceVersionId: z.string().uuid().optional(),
+});
+
+const archiveContentInput = contentIdInput.extend({
+	note: z.string().trim().max(1000).optional(),
+});
 
 const listInput = z.object({
 	status: statusSchema.optional(),
@@ -43,6 +66,24 @@ const editDraftInput = z
 			input.title !== undefined,
 		{ message: "Provide at least one draft field to update." },
 	);
+
+const versionFields = {
+	archivedAt: contentVersion.archivedAt,
+	body: contentVersion.body,
+	contentId: contentVersion.contentId,
+	createdAt: contentVersion.createdAt,
+	createdBy: contentVersion.createdBy,
+	id: contentVersion.id,
+	kind: learningContent.kind,
+	metadata: contentVersion.metadata,
+	publishedAt: contentVersion.publishedAt,
+	reviewedAt: contentVersion.reviewedAt,
+	reviewedBy: contentVersion.reviewedBy,
+	status: contentVersion.status,
+	title: sql<string>`coalesce(${contentVersion.metadata}->>'_draftTitle', ${learningContent.title})`,
+	updatedAt: contentVersion.updatedAt,
+	versionNumber: contentVersion.versionNumber,
+};
 
 type TransitionOptions = {
 	actorId: string;
@@ -112,22 +153,7 @@ const transitionVersion = async ({
 
 const listVersions = async (status?: ContentStatus) =>
 	db
-		.select({
-			archivedAt: contentVersion.archivedAt,
-			body: contentVersion.body,
-			contentId: contentVersion.contentId,
-			createdAt: contentVersion.createdAt,
-			id: contentVersion.id,
-			kind: learningContent.kind,
-			metadata: contentVersion.metadata,
-			publishedAt: contentVersion.publishedAt,
-			reviewedAt: contentVersion.reviewedAt,
-			reviewedBy: contentVersion.reviewedBy,
-			status: contentVersion.status,
-			title: sql<string>`coalesce(${contentVersion.metadata}->>'_draftTitle', ${learningContent.title})`,
-			updatedAt: contentVersion.updatedAt,
-			versionNumber: contentVersion.versionNumber,
-		})
+		.select(versionFields)
 		.from(contentVersion)
 		.innerJoin(
 			learningContent,
@@ -139,6 +165,53 @@ const listVersions = async (status?: ContentStatus) =>
 				: ne(contentVersion.status, "archived"),
 		)
 		.orderBy(desc(contentVersion.updatedAt));
+
+const archiveVersion = async (
+	actorId: string,
+	contentVersionId: string,
+	note?: string,
+) =>
+	db.transaction(async (transaction) => {
+		const [existingVersion] = await transaction
+			.select({ status: contentVersion.status })
+			.from(contentVersion)
+			.where(eq(contentVersion.id, contentVersionId))
+			.limit(1);
+		if (!existingVersion) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Content version not found.",
+			});
+		}
+		if (existingVersion.status === "archived") {
+			throw new ORPCError("CONFLICT", {
+				message: "Content version is already archived.",
+			});
+		}
+
+		const [archivedVersion] = await transaction
+			.update(contentVersion)
+			.set({ archivedAt: new Date(), status: "archived" })
+			.where(
+				and(
+					eq(contentVersion.id, contentVersionId),
+					eq(contentVersion.status, existingVersion.status),
+				),
+			)
+			.returning();
+		if (!archivedVersion) {
+			throw new ORPCError("CONFLICT", {
+				message: "Content version changed before it could be archived.",
+			});
+		}
+		await transaction.insert(contentReviewEvent).values({
+			actorId,
+			contentVersionId,
+			fromStatus: existingVersion.status,
+			note,
+			toStatus: "archived",
+		});
+		return archivedVersion;
+	});
 
 export const contentWorkflowRouter = {
 	approve: permissionProcedure("content:review")
@@ -160,16 +233,197 @@ export const contentWorkflowRouter = {
 	archive: permissionProcedure("content:archive")
 		.input(transitionInput)
 		.handler(({ context, input }) =>
-			transitionVersion({
-				actorId: context.session.user.id,
-				fromStatus: "published",
-				id: input.contentVersionId,
-				note: input.note,
-				toStatus: "archived",
-				updates: { archivedAt: new Date() },
+			archiveVersion(
+				context.session.user.id,
+				input.contentVersionId,
+				input.note,
+			),
+		),
+	archiveContent: permissionProcedure("content:archive")
+		.input(archiveContentInput)
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				await transaction.execute(
+					sql`select ${learningContent.id} from ${learningContent} where ${learningContent.id} = ${input.contentId} for update`,
+				);
+				const [existingContent] = await transaction
+					.select({ id: learningContent.id })
+					.from(learningContent)
+					.where(eq(learningContent.id, input.contentId))
+					.limit(1);
+				if (!existingContent) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Learning content not found.",
+					});
+				}
+
+				const activeVersions = await transaction
+					.select({ id: contentVersion.id, status: contentVersion.status })
+					.from(contentVersion)
+					.where(
+						and(
+							eq(contentVersion.contentId, input.contentId),
+							ne(contentVersion.status, "archived"),
+						),
+					);
+				if (activeVersions.length === 0) {
+					throw new ORPCError("CONFLICT", {
+						message: "Learning content is already archived.",
+					});
+				}
+
+				const archivedAt = new Date();
+				for (const version of activeVersions) {
+					const [archivedVersion] = await transaction
+						.update(contentVersion)
+						.set({ archivedAt, status: "archived" })
+						.where(
+							and(
+								eq(contentVersion.id, version.id),
+								eq(contentVersion.status, version.status),
+							),
+						)
+						.returning({ id: contentVersion.id });
+					if (!archivedVersion) {
+						throw new ORPCError("CONFLICT", {
+							message: "A content version changed before it could be archived.",
+						});
+					}
+				}
+				await transaction.insert(contentReviewEvent).values(
+					activeVersions.map((version) => ({
+						actorId: context.session.user.id,
+						contentVersionId: version.id,
+						fromStatus: version.status,
+						note: input.note,
+						toStatus: "archived" as const,
+					})),
+				);
+				return { archivedVersionCount: activeVersions.length };
 			}),
 		),
-	editDraft: permissionProcedure("content:review")
+	createDraft: permissionProcedure("content:create")
+		.input(createDraftInput)
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				const [createdContent] = await transaction
+					.insert(learningContent)
+					.values({
+						courseId: input.courseId,
+						createdBy: context.session.user.id,
+						kind: input.kind,
+						title: input.title,
+					})
+					.returning();
+				if (!createdContent) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Learning content could not be created.",
+					});
+				}
+				const [createdVersion] = await transaction
+					.insert(contentVersion)
+					.values({
+						body: input.body,
+						contentId: createdContent.id,
+						createdBy: context.session.user.id,
+						metadata: { ...input.metadata, _draftTitle: input.title },
+						versionNumber: 1,
+					})
+					.returning();
+				if (!createdVersion) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Initial content draft could not be created.",
+					});
+				}
+				return { content: createdContent, version: createdVersion };
+			}),
+		),
+	createVersionDraft: permissionProcedure("content:create")
+		.input(createVersionDraftInput)
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				await transaction.execute(
+					sql`select ${learningContent.id} from ${learningContent} where ${learningContent.id} = ${input.contentId} for update`,
+				);
+				const [existingContent] = await transaction
+					.select({ id: learningContent.id, title: learningContent.title })
+					.from(learningContent)
+					.where(eq(learningContent.id, input.contentId))
+					.limit(1);
+				if (!existingContent) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Learning content not found.",
+					});
+				}
+
+				const [existingDraft] = await transaction
+					.select({ id: contentVersion.id })
+					.from(contentVersion)
+					.where(
+						and(
+							eq(contentVersion.contentId, input.contentId),
+							eq(contentVersion.status, "draft"),
+						),
+					)
+					.limit(1);
+				if (existingDraft) {
+					throw new ORPCError("CONFLICT", {
+						message: "This content already has an editable draft.",
+					});
+				}
+
+				const versionCondition = input.sourceVersionId
+					? and(
+							eq(contentVersion.contentId, input.contentId),
+							eq(contentVersion.id, input.sourceVersionId),
+						)
+					: eq(contentVersion.contentId, input.contentId);
+				const [sourceVersion] = await transaction
+					.select()
+					.from(contentVersion)
+					.where(versionCondition)
+					.orderBy(desc(contentVersion.versionNumber))
+					.limit(1);
+				if (!sourceVersion) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Source content version not found.",
+					});
+				}
+				const [latestVersion] = await transaction
+					.select({ versionNumber: contentVersion.versionNumber })
+					.from(contentVersion)
+					.where(eq(contentVersion.contentId, input.contentId))
+					.orderBy(desc(contentVersion.versionNumber))
+					.limit(1);
+				const sourceMetadata = sourceVersion.metadata as Record<
+					string,
+					unknown
+				>;
+				const [createdVersion] = await transaction
+					.insert(contentVersion)
+					.values({
+						body: sourceVersion.body,
+						contentId: input.contentId,
+						createdBy: context.session.user.id,
+						metadata: {
+							...sourceMetadata,
+							_draftTitle:
+								typeof sourceMetadata._draftTitle === "string"
+									? sourceMetadata._draftTitle
+									: existingContent.title,
+						},
+						versionNumber: (latestVersion?.versionNumber ?? 0) + 1,
+					})
+					.returning();
+				if (!createdVersion) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Content draft could not be created.",
+					});
+				}
+				return createdVersion;
+			}),
+		),
+	editDraft: permissionProcedure("content:update")
 		.input(editDraftInput)
 		.handler(async ({ input }) =>
 			db.transaction(async (transaction) => {
@@ -204,21 +458,114 @@ export const contentWorkflowRouter = {
 					};
 				}
 
-				let savedVersion = updatedVersion;
-				if (Object.keys(updates).length > 0) {
-					const [persistedVersion] = await transaction
-						.update(contentVersion)
-						.set(updates)
-						.where(eq(contentVersion.id, input.contentVersionId))
-						.returning();
-					savedVersion = persistedVersion ?? updatedVersion;
+				const [savedVersion] = await transaction
+					.update(contentVersion)
+					.set(updates)
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.status, "draft"),
+						),
+					)
+					.returning();
+				if (!savedVersion) {
+					throw new ORPCError("CONFLICT", {
+						message: "Draft status changed before the edit could be saved.",
+					});
 				}
-				return savedVersion ?? updatedVersion;
+				return savedVersion;
 			}),
 		),
 	list: permissionProcedure("content:review")
 		.input(listInput)
 		.handler(({ input }) => listVersions(input.status)),
+	listContent: permissionProcedure("content:review").handler(async () => {
+		const rows = await db
+			.select({
+				contentId: learningContent.id,
+				courseId: learningContent.courseId,
+				createdAt: learningContent.createdAt,
+				kind: learningContent.kind,
+				latestStatus: contentVersion.status,
+				latestVersionNumber: contentVersion.versionNumber,
+				title: learningContent.title,
+				updatedAt: learningContent.updatedAt,
+				versionId: contentVersion.id,
+			})
+			.from(learningContent)
+			.leftJoin(
+				contentVersion,
+				eq(contentVersion.contentId, learningContent.id),
+			)
+			.orderBy(asc(learningContent.title), desc(contentVersion.versionNumber));
+		const summaries = new Map<
+			string,
+			{
+				archivedVersionCount: number;
+				contentId: string;
+				courseId: string;
+				createdAt: Date;
+				kind: "lesson" | "practice" | "quiz";
+				latestStatus: ContentStatus | null;
+				latestVersionNumber: number | null;
+				title: string;
+				updatedAt: Date;
+				versionCount: number;
+			}
+		>();
+		for (const row of rows) {
+			const summary = summaries.get(row.contentId);
+			if (summary) {
+				if (row.versionId) summary.versionCount += 1;
+				if (row.latestStatus === "archived") {
+					summary.archivedVersionCount += 1;
+				}
+				continue;
+			}
+			summaries.set(row.contentId, {
+				archivedVersionCount: row.latestStatus === "archived" ? 1 : 0,
+				contentId: row.contentId,
+				courseId: row.courseId,
+				createdAt: row.createdAt,
+				kind: row.kind,
+				latestStatus: row.latestStatus,
+				latestVersionNumber: row.latestVersionNumber,
+				title: row.title,
+				updatedAt: row.updatedAt,
+				versionCount: row.versionId ? 1 : 0,
+			});
+		}
+		return [...summaries.values()].map((summary) => ({
+			...summary,
+			isArchived:
+				summary.versionCount > 0 &&
+				summary.archivedVersionCount === summary.versionCount,
+		}));
+	}),
+	listHistory: permissionProcedure("content:review")
+		.input(contentIdInput)
+		.handler(async ({ input }) => {
+			const [content] = await db
+				.select()
+				.from(learningContent)
+				.where(eq(learningContent.id, input.contentId))
+				.limit(1);
+			if (!content) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Learning content not found.",
+				});
+			}
+			const versions = await db
+				.select(versionFields)
+				.from(contentVersion)
+				.innerJoin(
+					learningContent,
+					eq(learningContent.id, contentVersion.contentId),
+				)
+				.where(eq(contentVersion.contentId, input.contentId))
+				.orderBy(desc(contentVersion.versionNumber));
+			return { content, versions };
+		}),
 	listPublished: protectedProcedure.handler(async () => {
 		const versions = await listVersions("published");
 		return versions.map(({ reviewedAt, reviewedBy, ...version }) => version);
