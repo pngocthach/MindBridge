@@ -11,6 +11,7 @@ import { recommendationRouter } from "./recommendation";
 import { sourceDocumentRouter } from "./source-documents";
 import { teacherRouter } from "./teacher";
 import { tutorRouter } from "./tutor";
+import { usersRouter } from "./users";
 
 export const appRouter = {
 	contentWorkflow: contentWorkflowRouter,
@@ -28,6 +29,7 @@ export const appRouter = {
 	sourceDocuments: sourceDocumentRouter,
 	teacher: teacherRouter,
 	tutor: tutorRouter,
+	users: usersRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;

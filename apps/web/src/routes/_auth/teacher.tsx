@@ -131,6 +131,12 @@ type Classroom = Awaited<
 type CourseOption = Awaited<
 	ReturnType<typeof orpc.teacher.listCourseOptions.call>
 >[number];
+type Enrollment = Awaited<
+	ReturnType<typeof orpc.teacher.listEnrollments.call>
+>[number];
+type ClassroomGroup = Awaited<
+	ReturnType<typeof orpc.teacher.listGroups.call>
+>[number];
 function CreateClassroomForm({
 	courseOptions,
 }: {
@@ -584,6 +590,280 @@ function ClassroomCard({
 					</CardContent>
 				</Card>
 			</div>
+			<GroupManager
+				classroomId={classroom.id}
+				enrollments={enrollments.data ?? []}
+			/>
 		</div>
+	);
+}
+
+function GroupManager({
+	classroomId,
+	enrollments,
+}: {
+	classroomId: string;
+	enrollments: Enrollment[];
+}) {
+	const queryClient = useQueryClient();
+	const [name, setName] = useState("");
+	const groups = useQuery(
+		orpc.teacher.listGroups.queryOptions({ input: { classroomId } }),
+	);
+	const createGroup = useMutation({
+		...orpc.teacher.createGroup.mutationOptions(),
+		onSuccess: async () => {
+			setName("");
+			await queryClient.invalidateQueries({
+				queryKey: orpc.teacher.listGroups.key(),
+			});
+			toast.success("Đã tạo nhóm");
+		},
+	});
+	const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!name.trim()) return;
+		createGroup.mutate({ classroomId, name });
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Nhóm học viên</CardTitle>
+				<CardDescription>
+					Tạo nhóm và phân công các học viên đang ghi danh trong lớp.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<form className="flex gap-2" onSubmit={handleCreate}>
+					<div className="flex-1">
+						<label className="sr-only" htmlFor={`new-group-${classroomId}`}>
+							Tên nhóm
+						</label>
+						<input
+							className={fieldClassName}
+							id={`new-group-${classroomId}`}
+							maxLength={120}
+							onChange={(event) => setName(event.target.value)}
+							placeholder="Tên nhóm"
+							required
+							value={name}
+						/>
+					</div>
+					<Button disabled={createGroup.isPending} type="submit">
+						{createGroup.isPending ? "Đang tạo…" : "Tạo nhóm"}
+					</Button>
+				</form>
+				{createGroup.isError ? (
+					<p className="text-destructive text-xs" role="alert">
+						Không thể tạo nhóm. Tên nhóm có thể đã được sử dụng.
+					</p>
+				) : null}
+				{groups.isPending ? (
+					<p className="text-muted-foreground text-sm">Đang tải nhóm…</p>
+				) : null}
+				{groups.isError ? (
+					<p className="text-destructive text-xs" role="alert">
+						Không thể tải danh sách nhóm.
+					</p>
+				) : null}
+				{groups.data?.length === 0 ? (
+					<p className="text-muted-foreground text-sm">Lớp chưa có nhóm.</p>
+				) : null}
+				{groups.data?.map((group) => (
+					<GroupCard enrollments={enrollments} group={group} key={group.id} />
+				))}
+			</CardContent>
+		</Card>
+	);
+}
+
+function GroupCard({
+	group,
+	enrollments,
+}: {
+	group: ClassroomGroup;
+	enrollments: Enrollment[];
+}) {
+	const queryClient = useQueryClient();
+	const [name, setName] = useState(group.name);
+	const [learnerId, setLearnerId] = useState("");
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+	const invalidateGroups = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.teacher.listGroups.key(),
+		});
+	};
+	const updateGroup = useMutation({
+		...orpc.teacher.updateGroup.mutationOptions(),
+		onSuccess: async () => {
+			setIsEditing(false);
+			await invalidateGroups();
+			toast.success("Đã đổi tên nhóm");
+		},
+	});
+	const deleteGroup = useMutation({
+		...orpc.teacher.deleteGroup.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateGroups();
+			toast.success("Đã xóa nhóm");
+		},
+	});
+	const addMember = useMutation({
+		...orpc.teacher.addGroupMember.mutationOptions(),
+		onSuccess: async () => {
+			setLearnerId("");
+			await invalidateGroups();
+			toast.success("Đã thêm học viên vào nhóm");
+		},
+	});
+	const removeMember = useMutation({
+		...orpc.teacher.removeGroupMember.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateGroups();
+			toast.success("Đã xóa học viên khỏi nhóm");
+		},
+	});
+	const memberIds = new Set(group.members.map((member) => member.learnerId));
+	const availableEnrollments = enrollments.filter(
+		(enrollment) =>
+			enrollment.status === "active" && !memberIds.has(enrollment.learnerId),
+	);
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!name.trim()) return;
+		updateGroup.mutate({ groupId: group.id, name });
+	};
+	const handleAddMember = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!learnerId) return;
+		addMember.mutate({ groupId: group.id, learnerId });
+	};
+	const hasError =
+		updateGroup.isError ||
+		deleteGroup.isError ||
+		addMember.isError ||
+		removeMember.isError;
+
+	return (
+		<section
+			className="space-y-3 border p-4"
+			aria-labelledby={`group-${group.id}`}
+		>
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<h3 className="font-medium" id={`group-${group.id}`}>
+					{group.name} · {group.members.length} học viên
+				</h3>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => setIsEditing((current) => !current)}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy sửa" : "Đổi tên"}
+					</Button>
+					<Button
+						disabled={deleteGroup.isPending}
+						onClick={() => {
+							if (isConfirmingDelete) {
+								deleteGroup.mutate({ groupId: group.id });
+								return;
+							}
+							setIsConfirmingDelete(true);
+						}}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						{deleteGroup.isPending
+							? "Đang xóa…"
+							: isConfirmingDelete
+								? "Xác nhận xóa"
+								: "Xóa"}
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form className="flex gap-2" onSubmit={handleUpdate}>
+					<label className="sr-only" htmlFor={`group-name-${group.id}`}>
+						Tên nhóm
+					</label>
+					<input
+						className={fieldClassName}
+						id={`group-name-${group.id}`}
+						maxLength={120}
+						onChange={(event) => setName(event.target.value)}
+						required
+						value={name}
+					/>
+					<Button disabled={updateGroup.isPending} size="sm" type="submit">
+						Lưu
+					</Button>
+				</form>
+			) : null}
+			<form className="flex gap-2" onSubmit={handleAddMember}>
+				<label className="sr-only" htmlFor={`group-learner-${group.id}`}>
+					Chọn học viên
+				</label>
+				<select
+					className={fieldClassName}
+					disabled={availableEnrollments.length === 0}
+					id={`group-learner-${group.id}`}
+					onChange={(event) => setLearnerId(event.target.value)}
+					value={learnerId}
+				>
+					<option value="">Chọn học viên đang ghi danh</option>
+					{availableEnrollments.map((enrollment) => (
+						<option key={enrollment.learnerId} value={enrollment.learnerId}>
+							{enrollment.learnerName} ({enrollment.email})
+						</option>
+					))}
+				</select>
+				<Button
+					disabled={!learnerId || addMember.isPending}
+					size="sm"
+					type="submit"
+				>
+					Thêm vào nhóm
+				</Button>
+			</form>
+			{group.members.length === 0 ? (
+				<p className="text-muted-foreground text-sm">Nhóm chưa có học viên.</p>
+			) : (
+				<ul className="space-y-2">
+					{group.members.map((member) => (
+						<li
+							className="flex items-center justify-between gap-3"
+							key={member.learnerId}
+						>
+							<span className="text-sm">
+								{member.learnerName} · {member.email}
+							</span>
+							<Button
+								disabled={removeMember.isPending}
+								onClick={() =>
+									removeMember.mutate({
+										groupId: group.id,
+										learnerId: member.learnerId,
+									})
+								}
+								size="sm"
+								type="button"
+								variant="outline"
+							>
+								Xóa khỏi nhóm
+							</Button>
+						</li>
+					))}
+				</ul>
+			)}
+			{hasError ? (
+				<p className="text-destructive text-xs" role="alert">
+					Không thể cập nhật nhóm. Hãy kiểm tra thông tin và thử lại.
+				</p>
+			) : null}
+		</section>
 	);
 }

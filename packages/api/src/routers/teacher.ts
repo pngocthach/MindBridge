@@ -2,6 +2,7 @@ import {
 	classroom,
 	classroomEnrollment,
 	classroomGroup,
+	classroomGroupMember,
 	contentAssignment,
 	contentVersion,
 	course,
@@ -34,6 +35,19 @@ const classroomDetailsInput = z.object({
 const enrollmentInput = z.object({
 	classroomId: z.string().uuid(),
 	email: z.string().trim().toLowerCase().email(),
+});
+
+const groupDetailsInput = z.object({
+	classroomId: z.string().uuid(),
+	name: z.string().trim().min(1).max(120),
+});
+
+const groupIdInput = z.object({
+	groupId: z.string().uuid(),
+});
+
+const groupMemberInput = groupIdInput.extend({
+	learnerId: z.string().trim().min(1),
 });
 
 const assignmentInput = z
@@ -83,7 +97,63 @@ const requireTeacherClassroom = async (
 	return ownedClassroom;
 };
 
+const requireTeacherGroup = async (teacherId: string, groupId: string) => {
+	const [ownedGroup] = await db
+		.select({
+			classroomId: classroomGroup.classroomId,
+			id: classroomGroup.id,
+			name: classroomGroup.name,
+		})
+		.from(classroomGroup)
+		.innerJoin(classroom, eq(classroom.id, classroomGroup.classroomId))
+		.where(
+			and(eq(classroomGroup.id, groupId), eq(classroom.teacherId, teacherId)),
+		)
+		.limit(1);
+	if (!ownedGroup) {
+		throw new ORPCError("NOT_FOUND", { message: "Group not found." });
+	}
+	return ownedGroup;
+};
+
 export const teacherRouter = {
+	addGroupMember: permissionProcedure("class:read")
+		.input(groupMemberInput)
+		.handler(async ({ context, input }) => {
+			const group = await requireTeacherGroup(
+				context.session.user.id,
+				input.groupId,
+			);
+			const [enrollment] = await db
+				.select({ learnerId: classroomEnrollment.learnerId })
+				.from(classroomEnrollment)
+				.where(
+					and(
+						eq(classroomEnrollment.classroomId, group.classroomId),
+						eq(classroomEnrollment.learnerId, input.learnerId),
+						eq(classroomEnrollment.status, "active"),
+					),
+				)
+				.limit(1);
+			if (!enrollment) {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"Only active learners enrolled in this classroom can be added.",
+				});
+			}
+
+			const [createdMember] = await db
+				.insert(classroomGroupMember)
+				.values({ groupId: input.groupId, learnerId: input.learnerId })
+				.onConflictDoNothing()
+				.returning();
+			return (
+				createdMember ?? {
+					groupId: input.groupId,
+					learnerId: input.learnerId,
+				}
+			);
+		}),
 	addEnrollment: permissionProcedure("class:read")
 		.input(enrollmentInput)
 		.handler(async ({ context, input }) => {
@@ -298,6 +368,16 @@ export const teacherRouter = {
 				.returning();
 			return createdClassroom;
 		}),
+	createGroup: permissionProcedure("class:read")
+		.input(groupDetailsInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			const [createdGroup] = await db
+				.insert(classroomGroup)
+				.values({ classroomId: input.classroomId, name: input.name })
+				.returning();
+			return createdGroup;
+		}),
 	deactivateEnrollment: permissionProcedure("class:read")
 		.input(enrollmentInput)
 		.handler(async ({ context, input }) => {
@@ -420,6 +500,86 @@ export const teacherRouter = {
 				.innerJoin(user, eq(user.id, classroomEnrollment.learnerId))
 				.where(eq(classroomEnrollment.classroomId, input.classroomId))
 				.orderBy(asc(user.name));
+		}),
+	listGroups: permissionProcedure("class:read")
+		.input(classroomIdInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			const groups = await db
+				.select({
+					createdAt: classroomGroup.createdAt,
+					id: classroomGroup.id,
+					name: classroomGroup.name,
+				})
+				.from(classroomGroup)
+				.where(eq(classroomGroup.classroomId, input.classroomId))
+				.orderBy(asc(classroomGroup.name));
+			if (groups.length === 0) {
+				return [];
+			}
+
+			const members = await db
+				.select({
+					email: user.email,
+					groupId: classroomGroupMember.groupId,
+					learnerId: classroomGroupMember.learnerId,
+					learnerName: user.name,
+				})
+				.from(classroomGroupMember)
+				.innerJoin(user, eq(user.id, classroomGroupMember.learnerId))
+				.where(
+					inArray(
+						classroomGroupMember.groupId,
+						groups.map(({ id }) => id),
+					),
+				)
+				.orderBy(asc(user.name));
+
+			return groups.map((group) => ({
+				...group,
+				members: members.filter(({ groupId }) => groupId === group.id),
+			}));
+		}),
+	removeGroupMember: permissionProcedure("class:read")
+		.input(groupMemberInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherGroup(context.session.user.id, input.groupId);
+			const [removedMember] = await db
+				.delete(classroomGroupMember)
+				.where(
+					and(
+						eq(classroomGroupMember.groupId, input.groupId),
+						eq(classroomGroupMember.learnerId, input.learnerId),
+					),
+				)
+				.returning();
+			if (!removedMember) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Group member not found.",
+				});
+			}
+			return removedMember;
+		}),
+	deleteGroup: permissionProcedure("class:read")
+		.input(groupIdInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherGroup(context.session.user.id, input.groupId);
+			const [deletedGroup] = await db
+				.delete(classroomGroup)
+				.where(eq(classroomGroup.id, input.groupId))
+				.returning({ id: classroomGroup.id });
+			return deletedGroup;
+		}),
+	updateGroup: permissionProcedure("class:read")
+		.input(groupIdInput.extend({ name: z.string().trim().min(1).max(120) }))
+		.handler(async ({ context, input }) => {
+			await requireTeacherGroup(context.session.user.id, input.groupId);
+			const [updatedGroup] = await db
+				.update(classroomGroup)
+				.set({ name: input.name })
+				.where(eq(classroomGroup.id, input.groupId))
+				.returning();
+			return updatedGroup;
 		}),
 	updateClassroom: permissionProcedure("class:read")
 		.input(classroomDetailsInput.extend({ classroomId: z.string().uuid() }))

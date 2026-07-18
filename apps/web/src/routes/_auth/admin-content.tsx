@@ -21,6 +21,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
+import SourceDocumentLibrary from "@/components/source-document-library";
 import { orpc } from "@/utils/orpc";
 
 const statuses = [
@@ -54,15 +55,17 @@ export const Route = createFileRoute("/_auth/admin-content")({
 
 function AdminContentPage() {
 	const { session } = Route.useRouteContext();
+	const role = session.data?.user.role;
+	const isAdmin = role === "admin";
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("in_review");
 	const versions = useQuery(
 		orpc.contentWorkflow.list.queryOptions({
-			enabled: session.data?.user.role === "admin",
+			enabled: isAdmin,
 			input: statusFilter === "all" ? {} : { status: statusFilter },
 		}),
 	);
 
-	if (session.data?.user.role !== "admin") {
+	if (role !== "admin" && role !== "teacher") {
 		return (
 			<section
 				className="rounded-none border border-destructive/30 bg-destructive/10 p-6"
@@ -70,71 +73,79 @@ function AdminContentPage() {
 			>
 				<h1 className="font-semibold text-lg">Không có quyền truy cập</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
-					Chỉ quản trị viên được review và xuất bản học liệu.
+					Chỉ quản trị viên và giáo viên được quản lý tài liệu nguồn.
 				</p>
 			</section>
 		);
 	}
 
 	return (
-		<section aria-labelledby="content-workflow-title" className="space-y-4">
-			<header className="rounded-xl border bg-card/80 p-4 shadow-sm">
-				<h1 className="font-semibold text-2xl" id="content-workflow-title">
-					Kiểm duyệt học liệu
-				</h1>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Mọi học liệu phải được quản trị viên phê duyệt trước khi xuất bản.
-				</p>
-			</header>
+		<div className="space-y-8">
+			<SourceDocumentLibrary />
+			{isAdmin ? (
+				<section aria-labelledby="content-workflow-title" className="space-y-4">
+					<header className="rounded-xl border bg-card/80 p-4 shadow-sm">
+						<h1 className="font-semibold text-2xl" id="content-workflow-title">
+							Kiểm duyệt học liệu
+						</h1>
+						<p className="mt-1 text-muted-foreground text-sm">
+							Mọi học liệu phải được quản trị viên phê duyệt trước khi xuất bản.
+						</p>
+					</header>
 
-			<nav aria-label="Lọc theo trạng thái" className="flex flex-wrap gap-2">
-				<FilterButton
-					active={statusFilter === "all"}
-					onClick={() => setStatusFilter("all")}
-				>
-					Đang hoạt động
-				</FilterButton>
-				{statuses.map((status) => (
-					<FilterButton
-						active={statusFilter === status}
-						key={status}
-						onClick={() => setStatusFilter(status)}
+					<nav
+						aria-label="Lọc theo trạng thái"
+						className="flex flex-wrap gap-2"
 					>
-						{statusLabels[status]}
-					</FilterButton>
-				))}
-			</nav>
+						<FilterButton
+							active={statusFilter === "all"}
+							onClick={() => setStatusFilter("all")}
+						>
+							Đang hoạt động
+						</FilterButton>
+						{statuses.map((status) => (
+							<FilterButton
+								active={statusFilter === status}
+								key={status}
+								onClick={() => setStatusFilter(status)}
+							>
+								{statusLabels[status]}
+							</FilterButton>
+						))}
+					</nav>
 
-			{versions.isPending ? <Loader /> : null}
-			{versions.isError ? (
-				<section
-					className="rounded-none border border-destructive/30 bg-destructive/10 p-6"
-					role="alert"
-				>
-					<h2 className="font-semibold">Không thể tải học liệu</h2>
-					<p className="mt-1 text-muted-foreground text-sm">
-						Hãy thử tải lại danh sách sau ít phút.
-					</p>
+					{versions.isPending ? <Loader /> : null}
+					{versions.isError ? (
+						<section
+							className="rounded-none border border-destructive/30 bg-destructive/10 p-6"
+							role="alert"
+						>
+							<h2 className="font-semibold">Không thể tải học liệu</h2>
+							<p className="mt-1 text-muted-foreground text-sm">
+								Hãy thử tải lại danh sách sau ít phút.
+							</p>
+						</section>
+					) : null}
+					{versions.data?.length === 0 ? (
+						<Empty>
+							<EmptyHeader>
+								<EmptyTitle>Không có học liệu</EmptyTitle>
+								<EmptyDescription>
+									Chưa có học liệu ở trạng thái đã chọn.
+								</EmptyDescription>
+							</EmptyHeader>
+						</Empty>
+					) : null}
+					{versions.data ? (
+						<div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+							{versions.data.map((version) => (
+								<ContentVersionCard key={version.id} version={version} />
+							))}
+						</div>
+					) : null}
 				</section>
 			) : null}
-			{versions.data?.length === 0 ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyTitle>Không có học liệu</EmptyTitle>
-						<EmptyDescription>
-							Chưa có học liệu ở trạng thái đã chọn.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : null}
-			{versions.data ? (
-				<div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
-					{versions.data.map((version) => (
-						<ContentVersionCard key={version.id} version={version} />
-					))}
-				</div>
-			) : null}
-		</section>
+		</div>
 	);
 }
 

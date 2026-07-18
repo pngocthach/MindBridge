@@ -1,4 +1,4 @@
-import { buttonVariants } from "@MindBridge/ui/components/button";
+import { Button, buttonVariants } from "@MindBridge/ui/components/button";
 import {
 	Card,
 	CardContent,
@@ -13,10 +13,22 @@ import {
 	EmptyTitle,
 } from "@MindBridge/ui/components/empty";
 import { Input } from "@MindBridge/ui/components/input";
-import { useQueries } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueries,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, ChevronRight, Search } from "lucide-react";
+import {
+	BookOpen,
+	ChevronRight,
+	Search,
+	ShieldCheck,
+	Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import Loader from "@/components/loader";
 import { orpc } from "@/utils/orpc";
@@ -36,6 +48,16 @@ const statusLabels: Record<ContentStatus, string> = {
 	draft: "Bản nháp",
 	in_review: "Chờ duyệt",
 	published: "Đã xuất bản",
+};
+
+const userRoles = ["learner", "teacher", "editor", "admin"] as const;
+type UserRole = (typeof userRoles)[number];
+
+const roleLabels: Record<UserRole, string> = {
+	admin: "Quản trị viên",
+	editor: "Biên tập viên",
+	learner: "Học viên",
+	teacher: "Giáo viên",
 };
 
 export const Route = createFileRoute("/_auth/admin")({
@@ -130,6 +152,8 @@ function AdminConsoleContent() {
 					<ChevronRight aria-hidden="true" data-icon="inline-end" />
 				</Link>
 			</header>
+
+			<UserManagement />
 
 			{isLoading ? <Loader /> : null}
 			{isError ? (
@@ -252,6 +276,212 @@ function AdminConsoleContent() {
 				</CardContent>
 			</Card>
 		</section>
+	);
+}
+
+function UserManagement() {
+	const { session: currentSession } = Route.useRouteContext();
+	const queryClient = useQueryClient();
+	const [search, setSearch] = useState("");
+	const users = useQuery(orpc.users.list.queryOptions());
+	const refreshUsers = async () => {
+		await queryClient.invalidateQueries({ queryKey: orpc.users.list.key() });
+	};
+	const updateRole = useMutation(
+		orpc.users.updateRole.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await refreshUsers();
+				toast.success("Đã cập nhật vai trò.");
+			},
+		}),
+	);
+	const revokeSessions = useMutation(
+		orpc.users.revokeSessions.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await refreshUsers();
+				toast.success("Đã đăng xuất tài khoản khỏi mọi thiết bị.");
+			},
+		}),
+	);
+	const disableAccount = useMutation(
+		orpc.users.disable.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: async () => {
+				await refreshUsers();
+				toast.success("Đã vô hiệu hóa tài khoản.");
+			},
+		}),
+	);
+	const normalizedSearch = search.trim().toLowerCase();
+	const filteredUsers = (users.data ?? []).filter((managedUser) =>
+		`${managedUser.name} ${managedUser.email}`
+			.toLowerCase()
+			.includes(normalizedSearch),
+	);
+
+	const handleDisable = (userId: string, name: string) => {
+		const confirmed = globalThis.confirm(
+			`Vô hiệu hóa ${name}? Người dùng sẽ bị đăng xuất và không thể đăng nhập lại bằng thông tin hiện tại.`,
+		);
+		if (confirmed) {
+			disableAccount.mutate({ userId });
+		}
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<div className="flex items-center gap-2">
+					<Users aria-hidden="true" className="size-5 text-primary" />
+					<CardTitle>Người dùng và phân quyền</CardTitle>
+				</div>
+				<CardDescription>
+					Quản lý vai trò, phiên đăng nhập và quyền truy cập tài khoản.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<label className="relative block max-w-md">
+					<span className="sr-only">Tìm người dùng</span>
+					<Search
+						aria-hidden="true"
+						className="absolute top-2.5 left-2 size-4 text-muted-foreground"
+					/>
+					<Input
+						className="pl-8"
+						onChange={(event) => setSearch(event.target.value)}
+						placeholder="Tìm theo tên hoặc email…"
+						value={search}
+					/>
+				</label>
+
+				{users.isPending ? <Loader /> : null}
+				{users.isError ? (
+					<p className="text-destructive text-sm" role="alert">
+						Không thể tải danh sách người dùng.
+					</p>
+				) : null}
+				{!users.isPending && filteredUsers.length === 0 ? (
+					<Empty>
+						<EmptyHeader>
+							<EmptyTitle>Không tìm thấy người dùng</EmptyTitle>
+							<EmptyDescription>Thử một từ khóa khác.</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
+				) : null}
+
+				{filteredUsers.length > 0 ? (
+					<div className="overflow-x-auto border-y">
+						<table className="w-full text-left text-sm">
+							<thead className="text-muted-foreground text-xs">
+								<tr className="border-b">
+									<th className="px-2 py-3 font-medium" scope="col">
+										Người dùng
+									</th>
+									<th className="px-2 py-3 font-medium" scope="col">
+										Trạng thái
+									</th>
+									<th className="px-2 py-3 font-medium" scope="col">
+										Vai trò
+									</th>
+									<th className="px-2 py-3 text-right font-medium" scope="col">
+										Quản lý
+									</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y">
+								{filteredUsers.map((managedUser) => {
+									const isCurrentUser =
+										managedUser.id === currentSession.data?.user.id;
+									const isDisabled = managedUser.credentialCount === 0;
+									const isUpdatingRole =
+										updateRole.isPending &&
+										updateRole.variables?.userId === managedUser.id;
+									return (
+										<tr key={managedUser.id}>
+											<td className="px-2 py-3">
+												<p className="font-medium">{managedUser.name}</p>
+												<p className="text-muted-foreground text-xs">
+													{managedUser.email}
+												</p>
+											</td>
+											<td className="px-2 py-3">
+												<span
+													className={
+														isDisabled ? "text-destructive" : "text-emerald-600"
+													}
+												>
+													{isDisabled ? "Đã vô hiệu hóa" : "Đang hoạt động"}
+												</span>
+												<p className="text-muted-foreground text-xs">
+													{managedUser.activeSessionCount} phiên đăng nhập
+												</p>
+											</td>
+											<td className="px-2 py-3">
+												<select
+													aria-label={`Vai trò của ${managedUser.name}`}
+													className="h-8 border border-input bg-background px-2 text-xs"
+													disabled={isUpdatingRole || isDisabled}
+													onChange={(event) =>
+														updateRole.mutate({
+															role: event.target.value as UserRole,
+															userId: managedUser.id,
+														})
+													}
+													value={managedUser.role}
+												>
+													{userRoles.map((role) => (
+														<option key={role} value={role}>
+															{roleLabels[role]}
+														</option>
+													))}
+												</select>
+											</td>
+											<td className="px-2 py-3">
+												<div className="flex justify-end gap-2">
+													<Button
+														disabled={
+															isCurrentUser ||
+															managedUser.activeSessionCount === 0 ||
+															revokeSessions.isPending
+														}
+														onClick={() =>
+															revokeSessions.mutate({ userId: managedUser.id })
+														}
+														size="sm"
+														type="button"
+														variant="outline"
+													>
+														Đăng xuất
+													</Button>
+													<Button
+														disabled={
+															isCurrentUser ||
+															isDisabled ||
+															disableAccount.isPending
+														}
+														onClick={() =>
+															handleDisable(managedUser.id, managedUser.name)
+														}
+														size="sm"
+														type="button"
+														variant="destructive"
+													>
+														<ShieldCheck aria-hidden="true" />
+														Vô hiệu hóa
+													</Button>
+												</div>
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+				) : null}
+			</CardContent>
+		</Card>
 	);
 }
 
