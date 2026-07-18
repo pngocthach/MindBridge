@@ -6,6 +6,7 @@
 		"build": "vite build",
 		"check-types": "tsc --noEmit",
 		"serve": "vite preview",
+		"start": "node production-server.mjs",
 		"dev": "vite dev"
 	},
 	"dependencies": {
@@ -31,6 +32,7 @@
 		"react-markdown": "^10.1.0",
 		"remark-gfm": "^4.0.1",
 		"sonner": "catalog:",
+		"srvx": "^0.11.22",
 		"tailwindcss": "catalog:",
 		"zod": "catalog:"
 	},

@@ -1,0 +1,8 @@
+{$CADDY_SITE} {
+	encode zstd gzip
+
+	@api path /api/auth/* /api-reference/* /rpc/*
+	reverse_proxy @api server:3000
+
+	reverse_proxy web:3001
+}
