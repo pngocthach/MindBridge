@@ -45,6 +45,37 @@ Caddy obtains and renews HTTPS certificates automatically when DNS resolves to t
 
 The `migrate` container waits for PostgreSQL and applies Drizzle migrations before the API starts. PostgreSQL data is stored in the `mindbridge_postgres-data` named volume; never use `docker compose down -v` in production.
 
+## Continuous deployment
+
+`.github/workflows/deploy-production.yml` deploys every push to `main`; it can also
+run manually from **Actions → Deploy production → Run workflow**. Deployments are
+serialized, so a newer push waits for any active production deploy to finish.
+
+Create a dedicated SSH key for GitHub Actions and authorize only its public half
+on the VM:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/mindbridge_github_actions -C mindbridge-github-actions
+ssh-copy-id -i ~/.ssh/mindbridge_github_actions.pub azureuser@<vm-ip>
+```
+
+In **Settings → Environments → production**, add these environment secrets:
+
+| Secret | Value |
+| --- | --- |
+| `DEPLOY_SSH_HOST` | VM public IP or DNS hostname |
+| `DEPLOY_SSH_USER` | Linux deployment user, for example `azureuser` |
+| `DEPLOY_SSH_PRIVATE_KEY` | Contents of `~/.ssh/mindbridge_github_actions` |
+| `DEPLOY_SSH_KNOWN_HOSTS` | Pinned host key output, for example `ssh-keyscan -H <vm-ip>` |
+
+Verify the VM host-key fingerprint through a trusted channel before saving
+`DEPLOY_SSH_KNOWN_HOSTS`; do not disable SSH host-key verification. The workflow
+pulls `origin/main` in `/opt/mindbridge` and runs:
+
+```bash
+docker compose --env-file .env.production up --build --detach --remove-orphans
+```
+
 ## Verify deployment
 
 Replace `mindbridge.lol` with the configured domain:
