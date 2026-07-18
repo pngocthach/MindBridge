@@ -34,7 +34,7 @@ import { type FormEvent, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
-
+import LearnerProfilePanel from "@/components/learner-profile-panel";
 import Loader from "@/components/loader";
 import { orpc } from "@/utils/orpc";
 
@@ -64,6 +64,10 @@ type CourseSummary = {
 	progressPercent: number;
 	totalCount: number;
 };
+
+type LearnerAssignment = Awaited<
+	ReturnType<typeof orpc.assignments.listInbox.call>
+>[number];
 
 type ContentBlock = { text: string; title?: string };
 
@@ -261,10 +265,37 @@ function Dashboard() {
 }
 
 function LearnerDashboard({ learnerName }: { learnerName: string }) {
-	const courses = useQuery(orpc.learner.listCourses.queryOptions());
+	const profile = useQuery(orpc.learner.getProfile.queryOptions());
+	const hasProfile = profile.data !== undefined && profile.data !== null;
+	const courses = useQuery(
+		orpc.learner.listCourses.queryOptions({ enabled: hasProfile }),
+	);
+	const assignments = useQuery(
+		orpc.assignments.listInbox.queryOptions({ enabled: hasProfile }),
+	);
 	const [selectedClassroomId, setSelectedClassroomId] = useState<string>();
+	const [selectedContentId, setSelectedContentId] = useState<string>();
 
-	if (courses.isPending) {
+	if (profile.isPending) {
+		return <Loader />;
+	}
+	if (profile.isError) {
+		return (
+			<section
+				className="border border-destructive/30 bg-destructive/10 p-6"
+				role="alert"
+			>
+				<h1 className="font-semibold text-lg">Không thể tải hồ sơ học tập</h1>
+				<p className="mt-1 text-muted-foreground text-sm">
+					Hãy tải lại trang hoặc thử lại sau ít phút.
+				</p>
+			</section>
+		);
+	}
+	if (profile.data === null) {
+		return <LearnerProfilePanel learnerName={learnerName} profile={null} />;
+	}
+	if (courses.isPending || assignments.isPending) {
 		return <Loader />;
 	}
 
@@ -303,6 +334,15 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 					Tiếp tục bài chưa hoàn thành và hỏi Milo bất cứ lúc nào.
 				</p>
 			</header>
+			<LearnerProfilePanel learnerName={learnerName} profile={profile.data} />
+			<AssignmentInbox
+				assignments={assignments.data ?? []}
+				isError={assignments.isError}
+				onOpenAssignment={(classroomId, contentId) => {
+					setSelectedClassroomId(classroomId);
+					setSelectedContentId(contentId);
+				}}
+			/>
 
 			{courseList.length === 0 ? (
 				<Empty className="border">
@@ -318,18 +358,109 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 				<div className="grid items-start gap-6 xl:grid-cols-[18rem_minmax(0,1fr)]">
 					<CourseList
 						courses={courseList}
-						onSelect={setSelectedClassroomId}
+						onSelect={(classroomId) => {
+							setSelectedClassroomId(classroomId);
+							setSelectedContentId(undefined);
+						}}
 						selectedClassroomId={activeClassroomId}
 					/>
 					{activeClassroomId ? (
 						<CoursePlayer
 							classroomId={activeClassroomId}
-							key={activeClassroomId}
+							initialContentId={selectedContentId}
+							key={`${activeClassroomId}-${selectedContentId ?? "course"}`}
 						/>
 					) : null}
 				</div>
 			)}
 		</section>
+	);
+}
+
+function AssignmentInbox({
+	assignments,
+	isError,
+	onOpenAssignment,
+}: {
+	assignments: LearnerAssignment[];
+	isError: boolean;
+	onOpenAssignment: (classroomId: string, contentId: string) => void;
+}) {
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Hộp bài tập</CardTitle>
+				<CardDescription>
+					Bài tập được giao trực tiếp, theo nhóm hoặc theo lớp.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{isError ? (
+					<p className="text-destructive text-sm" role="alert">
+						Không thể tải hộp bài tập.
+					</p>
+				) : null}
+				{!isError && assignments.length === 0 ? (
+					<p className="text-muted-foreground text-sm">
+						Bạn chưa có bài tập nào được giao.
+					</p>
+				) : null}
+				{assignments.length > 0 ? (
+					<ul className="space-y-3">
+						{assignments.map((assignment) => {
+							const classroomId = assignment.classroomId;
+							const isOverdue =
+								assignment.status === "pending" &&
+								assignment.dueAt !== null &&
+								assignment.dueAt < new Date();
+							return (
+								<li
+									className="flex flex-wrap items-center justify-between gap-3 border-b pb-3 last:border-0"
+									key={assignment.id}
+								>
+									<div>
+										<p className="font-medium text-sm">{assignment.title}</p>
+										<p className="text-muted-foreground text-xs">
+											{assignment.classroomName ?? "Giao trực tiếp"}
+											{assignment.groupName
+												? ` · Nhóm ${assignment.groupName}`
+												: ""}
+											{" · "}
+											{assignment.dueAt
+												? `Hạn ${assignment.dueAt.toLocaleDateString("vi-VN")}`
+												: "Không có hạn nộp"}
+										</p>
+										<p
+											className={`mt-1 text-xs ${
+												isOverdue ? "text-destructive" : "text-muted-foreground"
+											}`}
+										>
+											{assignment.status === "completed"
+												? "Đã hoàn thành"
+												: isOverdue
+													? "Quá hạn"
+													: "Chưa hoàn thành"}
+										</p>
+									</div>
+									{classroomId ? (
+										<Button
+											onClick={() =>
+												onOpenAssignment(classroomId, assignment.contentId)
+											}
+											size="sm"
+											type="button"
+											variant="outline"
+										>
+											Mở khóa học
+										</Button>
+									) : null}
+								</li>
+							);
+						})}
+					</ul>
+				) : null}
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -384,12 +515,20 @@ function CourseList({
 	);
 }
 
-function CoursePlayer({ classroomId }: { classroomId: string }) {
+function CoursePlayer({
+	classroomId,
+	initialContentId,
+}: {
+	classroomId: string;
+	initialContentId: string | undefined;
+}) {
 	const queryClient = useQueryClient();
 	const course = useQuery(
 		orpc.learner.getCourse.queryOptions({ input: { classroomId } }),
 	);
-	const [selectedContentId, setSelectedContentId] = useState<string>();
+	const [selectedContentId, setSelectedContentId] = useState<
+		string | undefined
+	>(initialContentId);
 	const [isMiloOpen, setIsMiloOpen] = useState(false);
 	const completeLesson = useMutation(
 		orpc.learner.completeLesson.mutationOptions({

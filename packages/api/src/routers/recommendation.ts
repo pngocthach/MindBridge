@@ -6,20 +6,42 @@ import {
 	learningAttempt,
 	learningContent,
 	recommendation,
+	recommendationFeedback,
 	recommendationRun,
 	skill,
 	skillPrerequisite,
 } from "@MindBridge/db";
+import { ORPCError } from "@orpc/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { protectedProcedure } from "../index";
+import { permissionProcedure } from "../index";
 
 const ENGINE_VERSION = "prerequisite-path-v2";
 
 const generateInput = z.object({
 	limit: z.number().int().min(1).max(20).default(6),
 });
+
+const recommendationInput = z.object({ recommendationId: z.string().uuid() });
+const updateStatusInput = recommendationInput.extend({
+	status: z.enum(["accepted", "dismissed", "viewed"]),
+});
+const feedbackInput = recommendationInput.extend({
+	helpful: z.boolean(),
+	note: z.string().trim().max(1000).optional(),
+});
+
+const learnerProcedure = permissionProcedure("learning:read").use(
+	async ({ context, next }) => {
+		if (context.role !== "learner") {
+			throw new ORPCError("FORBIDDEN", {
+				message: "This procedure is only available to learners.",
+			});
+		}
+		return next({ context });
+	},
+);
 
 const difficultySchema = z
 	.object({
@@ -280,6 +302,8 @@ const getLatestRecommendations = async (learnerId: string) => {
 			contentTitle: learningContent.title,
 			contentVersionId: recommendation.contentVersionId,
 			id: recommendation.id,
+			feedbackHelpful: recommendationFeedback.helpful,
+			feedbackNote: recommendationFeedback.note,
 			rank: recommendation.rank,
 			reasonVi: recommendation.reasonVi,
 			status: recommendation.status,
@@ -299,6 +323,13 @@ const getLatestRecommendations = async (learnerId: string) => {
 			eq(learningContent.id, contentVersion.contentId),
 		)
 		.innerJoin(skill, eq(skill.id, recommendation.targetSkillId))
+		.leftJoin(
+			recommendationFeedback,
+			and(
+				eq(recommendationFeedback.recommendationId, recommendation.id),
+				eq(recommendationFeedback.learnerId, learnerId),
+			),
+		)
 		.where(eq(recommendation.runId, run.id))
 		.orderBy(asc(recommendation.rank));
 
@@ -306,7 +337,7 @@ const getLatestRecommendations = async (learnerId: string) => {
 };
 
 export const recommendationRouter = {
-	generate: protectedProcedure
+	generate: learnerProcedure
 		.input(generateInput)
 		.handler(({ context, input }) =>
 			db.transaction(async (transaction) => {
@@ -486,7 +517,111 @@ export const recommendationRouter = {
 				};
 			}),
 		),
-	latest: protectedProcedure.handler(({ context }) =>
+	latest: learnerProcedure.handler(({ context }) =>
 		getLatestRecommendations(context.session.user.id),
 	),
+	submitFeedback: learnerProcedure
+		.input(feedbackInput)
+		.handler(async ({ context, input }) => {
+			const learnerId = context.session.user.id;
+			const [ownedRecommendation] = await db
+				.select({ id: recommendation.id })
+				.from(recommendation)
+				.innerJoin(
+					recommendationRun,
+					eq(recommendationRun.id, recommendation.runId),
+				)
+				.where(
+					and(
+						eq(recommendation.id, input.recommendationId),
+						eq(recommendationRun.learnerId, learnerId),
+					),
+				)
+				.limit(1);
+			if (!ownedRecommendation) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Recommendation not found.",
+				});
+			}
+
+			const [feedback] = await db
+				.insert(recommendationFeedback)
+				.values({
+					helpful: input.helpful,
+					learnerId,
+					note: input.note,
+					recommendationId: input.recommendationId,
+				})
+				.onConflictDoUpdate({
+					set: {
+						helpful: input.helpful,
+						note: input.note,
+						updatedAt: new Date(),
+					},
+					target: recommendationFeedback.recommendationId,
+				})
+				.returning();
+			if (!feedback) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Recommendation feedback could not be saved.",
+				});
+			}
+			return feedback;
+		}),
+	updateStatus: learnerProcedure
+		.input(updateStatusInput)
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				const [ownedRecommendation] = await transaction
+					.select({
+						id: recommendation.id,
+						status: recommendation.status,
+					})
+					.from(recommendation)
+					.innerJoin(
+						recommendationRun,
+						eq(recommendationRun.id, recommendation.runId),
+					)
+					.where(
+						and(
+							eq(recommendation.id, input.recommendationId),
+							eq(recommendationRun.learnerId, context.session.user.id),
+						),
+					)
+					.limit(1);
+				if (!ownedRecommendation) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Recommendation not found.",
+					});
+				}
+				if (ownedRecommendation.status === input.status) {
+					return ownedRecommendation;
+				}
+				const isTerminal =
+					ownedRecommendation.status === "accepted" ||
+					ownedRecommendation.status === "dismissed";
+				if (isTerminal) {
+					throw new ORPCError("CONFLICT", {
+						message: "This recommendation has already been resolved.",
+					});
+				}
+
+				const [updatedRecommendation] = await transaction
+					.update(recommendation)
+					.set({ status: input.status })
+					.where(
+						and(
+							eq(recommendation.id, input.recommendationId),
+							eq(recommendation.status, ownedRecommendation.status),
+						),
+					)
+					.returning();
+				if (!updatedRecommendation) {
+					throw new ORPCError("CONFLICT", {
+						message: "Recommendation status changed before it could be saved.",
+					});
+				}
+				return updatedRecommendation;
+			}),
+		),
 };

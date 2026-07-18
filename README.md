@@ -45,6 +45,14 @@ pnpm run dev
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 The API is running at [http://localhost:3000](http://localhost:3000).
 
+## Demo Deployment
+
+The repository includes a Render Blueprint for a short-lived hosted demo. It
+creates separate web and API services, managed PostgreSQL, generated auth
+secrets, database migrations, and HTTP health checks without committing secret
+values. See [the demo deployment guide](docs/demo-environment.md) before applying
+[`render.yaml`](render.yaml).
+
 ## UI Customization
 
 React web apps in this stack share shadcn/ui primitives through `packages/ui`.

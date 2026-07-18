@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { hashPassword } from "better-auth/crypto";
@@ -86,12 +87,14 @@ const ids = {
 	advancedRecommendation: "00000000-0000-4000-8000-000000000103",
 } as const;
 
+export { ids as demoSeedIds };
+
 const publishedAt = new Date("2026-07-17T00:00:00.000Z");
 
 // Shared password for every seed account so the whole team can sign in.
 const SEED_PASSWORD = "MindBridge@123";
 
-async function seed(): Promise<void> {
+export async function seedDemoData(): Promise<void> {
 	await db
 		.insert(user)
 		.values([
@@ -937,8 +940,14 @@ async function seed(): Promise<void> {
 		.onConflictDoNothing();
 }
 
-try {
-	await seed();
-} finally {
-	await db.$client.end();
+const isExecutedDirectly =
+	process.argv[1] !== undefined &&
+	fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+
+if (isExecutedDirectly) {
+	try {
+		await seedDemoData();
+	} finally {
+		await db.$client.end();
+	}
 }

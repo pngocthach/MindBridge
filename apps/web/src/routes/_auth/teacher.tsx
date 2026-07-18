@@ -12,6 +12,7 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@MindBridge/ui/components/empty";
+import { Textarea } from "@MindBridge/ui/components/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -86,6 +87,7 @@ function TeacherPage() {
 				</p>
 			</header>
 			<CreateClassroomForm courseOptions={courseOptions.data} />
+			<AssignmentManager />
 			{classrooms.data.length === 0 ? (
 				<Empty>
 					<EmptyHeader>
@@ -130,6 +132,18 @@ type Classroom = Awaited<
 >[number];
 type CourseOption = Awaited<
 	ReturnType<typeof orpc.teacher.listCourseOptions.call>
+>[number];
+type Enrollment = Awaited<
+	ReturnType<typeof orpc.teacher.listEnrollments.call>
+>[number];
+type ClassroomGroup = Awaited<
+	ReturnType<typeof orpc.teacher.listGroups.call>
+>[number];
+type TeacherAssignment = Awaited<
+	ReturnType<typeof orpc.assignments.listTeacher.call>
+>[number];
+type TeacherFeedback = Awaited<
+	ReturnType<typeof orpc.teacher.listFeedback.call>
 >[number];
 function CreateClassroomForm({
 	courseOptions,
@@ -233,6 +247,7 @@ function ClassroomCard({
 }) {
 	const queryClient = useQueryClient();
 	const [contentVersionId, setContentVersionId] = useState("");
+	const [assignmentDueAt, setAssignmentDueAt] = useState("");
 	const [learnerEmail, setLearnerEmail] = useState("");
 	const [name, setName] = useState(classroom.name);
 	const [courseId, setCourseId] = useState(classroom.courseId);
@@ -261,7 +276,14 @@ function ClassroomCard({
 	const assignment = useMutation({
 		...orpc.teacher.assignContent.mutationOptions(),
 		onSuccess: async () => {
-			await invalidateClassroomData();
+			setAssignmentDueAt("");
+			setContentVersionId("");
+			await Promise.all([
+				invalidateClassroomData(),
+				queryClient.invalidateQueries({
+					queryKey: orpc.assignments.listTeacher.key(),
+				}),
+			]);
 			toast.success("Đã giao học liệu cho lớp");
 		},
 	});
@@ -302,7 +324,13 @@ function ClassroomCard({
 
 	const handleAssign = () => {
 		if (!contentVersionId) return;
-		assignment.mutate({ classroomId: classroom.id, contentVersionId });
+		assignment.mutate({
+			classroomId: classroom.id,
+			contentVersionId,
+			dueAt: assignmentDueAt
+				? new Date(`${assignmentDueAt}T23:59:59`)
+				: undefined,
+		});
 	};
 	const handleEnrollment = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -567,6 +595,19 @@ function ClassroomCard({
 										</option>
 									))}
 								</select>
+								<label
+									className="text-muted-foreground text-xs"
+									htmlFor={`assignment-due-${classroom.id}`}
+								>
+									Hạn nộp (không bắt buộc)
+								</label>
+								<input
+									className={fieldClassName}
+									id={`assignment-due-${classroom.id}`}
+									onChange={(event) => setAssignmentDueAt(event.target.value)}
+									type="date"
+									value={assignmentDueAt}
+								/>
 								<Button
 									disabled={!contentVersionId || assignment.isPending}
 									onClick={handleAssign}
@@ -584,6 +625,650 @@ function ClassroomCard({
 					</CardContent>
 				</Card>
 			</div>
+			<GroupManager
+				classroomId={classroom.id}
+				enrollments={enrollments.data ?? []}
+			/>
+			<FeedbackManager
+				classroomId={classroom.id}
+				enrollments={enrollments.data ?? []}
+			/>
 		</div>
+	);
+}
+
+function FeedbackManager({
+	classroomId,
+	enrollments,
+}: {
+	classroomId: string;
+	enrollments: Enrollment[];
+}) {
+	const queryClient = useQueryClient();
+	const [learnerId, setLearnerId] = useState("");
+	const [note, setNote] = useState("");
+	const feedback = useQuery(
+		orpc.teacher.listFeedback.queryOptions({ input: { classroomId } }),
+	);
+	const refreshFeedback = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.teacher.listFeedback.key(),
+		});
+	};
+	const createFeedback = useMutation({
+		...orpc.teacher.createFeedback.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			setLearnerId("");
+			setNote("");
+			await refreshFeedback();
+			toast.success("Đã tạo phản hồi cho học viên");
+		},
+	});
+	const activeEnrollments = enrollments.filter(
+		(enrollment) => enrollment.status === "active",
+	);
+	const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!learnerId || !note.trim()) return;
+		createFeedback.mutate({ classroomId, learnerId, note });
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Phản hồi giáo viên</CardTitle>
+				<CardDescription>
+					Ghi nhận và quản lý phản hồi dành cho học viên trong lớp này.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<form className="space-y-3 border p-4" onSubmit={handleCreate}>
+					<label className="block space-y-1 text-sm">
+						<span>Học viên</span>
+						<select
+							className={fieldClassName}
+							disabled={activeEnrollments.length === 0}
+							onChange={(event) => setLearnerId(event.target.value)}
+							required
+							value={learnerId}
+						>
+							<option value="">Chọn học viên đang ghi danh</option>
+							{activeEnrollments.map((enrollment) => (
+								<option key={enrollment.learnerId} value={enrollment.learnerId}>
+									{enrollment.learnerName} ({enrollment.email})
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="block space-y-1 text-sm">
+						<span>Nội dung phản hồi</span>
+						<Textarea
+							maxLength={5000}
+							onChange={(event) => setNote(event.target.value)}
+							placeholder="Nhập nhận xét hoặc hướng dẫn tiếp theo…"
+							required
+							value={note}
+						/>
+					</label>
+					<Button
+						disabled={!learnerId || !note.trim() || createFeedback.isPending}
+						type="submit"
+					>
+						{createFeedback.isPending ? "Đang lưu…" : "Tạo phản hồi"}
+					</Button>
+				</form>
+
+				{feedback.isPending ? (
+					<p className="text-muted-foreground text-sm">Đang tải phản hồi…</p>
+				) : null}
+				{feedback.isError ? (
+					<p className="text-destructive text-sm" role="alert">
+						Không thể tải phản hồi.
+					</p>
+				) : null}
+				{feedback.data?.length === 0 ? (
+					<p className="text-muted-foreground text-sm">
+						Chưa có phản hồi cho lớp này.
+					</p>
+				) : null}
+				{feedback.data?.length ? (
+					<ul className="space-y-3">
+						{feedback.data.map((item) => (
+							<FeedbackItem
+								feedback={item}
+								key={item.id}
+								onChanged={refreshFeedback}
+							/>
+						))}
+					</ul>
+				) : null}
+			</CardContent>
+		</Card>
+	);
+}
+
+function FeedbackItem({
+	feedback,
+	onChanged,
+}: {
+	feedback: TeacherFeedback;
+	onChanged: () => Promise<void>;
+}) {
+	const [note, setNote] = useState(feedback.note);
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+	const updateFeedback = useMutation({
+		...orpc.teacher.updateFeedback.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			setIsEditing(false);
+			await onChanged();
+			toast.success("Đã cập nhật phản hồi");
+		},
+	});
+	const deleteFeedback = useMutation({
+		...orpc.teacher.deleteFeedback.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			await onChanged();
+			toast.success("Đã xóa phản hồi");
+		},
+	});
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!note.trim()) return;
+		updateFeedback.mutate({ feedbackId: feedback.id, note });
+	};
+
+	return (
+		<li className="border p-4">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p className="font-medium">{feedback.learnerName}</p>
+					<p className="text-muted-foreground text-xs">
+						{feedback.createdAt.toLocaleDateString("vi-VN")}
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => {
+							setNote(feedback.note);
+							setIsEditing((current) => !current);
+						}}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy sửa" : "Chỉnh sửa"}
+					</Button>
+					<Button
+						disabled={deleteFeedback.isPending}
+						onClick={() => {
+							if (isConfirmingDelete) {
+								deleteFeedback.mutate({ feedbackId: feedback.id });
+								return;
+							}
+							setIsConfirmingDelete(true);
+						}}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						{deleteFeedback.isPending
+							? "Đang xóa…"
+							: isConfirmingDelete
+								? "Xác nhận xóa"
+								: "Xóa"}
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form className="mt-3 space-y-2" onSubmit={handleUpdate}>
+					<label className="sr-only" htmlFor={`feedback-note-${feedback.id}`}>
+						Nội dung phản hồi
+					</label>
+					<Textarea
+						id={`feedback-note-${feedback.id}`}
+						maxLength={5000}
+						onChange={(event) => setNote(event.target.value)}
+						required
+						value={note}
+					/>
+					<Button
+						disabled={!note.trim() || updateFeedback.isPending}
+						size="sm"
+						type="submit"
+					>
+						{updateFeedback.isPending ? "Đang lưu…" : "Lưu phản hồi"}
+					</Button>
+				</form>
+			) : (
+				<p className="mt-3 whitespace-pre-wrap text-sm">{feedback.note}</p>
+			)}
+		</li>
+	);
+}
+
+function GroupManager({
+	classroomId,
+	enrollments,
+}: {
+	classroomId: string;
+	enrollments: Enrollment[];
+}) {
+	const queryClient = useQueryClient();
+	const [name, setName] = useState("");
+	const groups = useQuery(
+		orpc.teacher.listGroups.queryOptions({ input: { classroomId } }),
+	);
+	const createGroup = useMutation({
+		...orpc.teacher.createGroup.mutationOptions(),
+		onSuccess: async () => {
+			setName("");
+			await queryClient.invalidateQueries({
+				queryKey: orpc.teacher.listGroups.key(),
+			});
+			toast.success("Đã tạo nhóm");
+		},
+	});
+	const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!name.trim()) return;
+		createGroup.mutate({ classroomId, name });
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Nhóm học viên</CardTitle>
+				<CardDescription>
+					Tạo nhóm và phân công các học viên đang ghi danh trong lớp.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<form className="flex gap-2" onSubmit={handleCreate}>
+					<div className="flex-1">
+						<label className="sr-only" htmlFor={`new-group-${classroomId}`}>
+							Tên nhóm
+						</label>
+						<input
+							className={fieldClassName}
+							id={`new-group-${classroomId}`}
+							maxLength={120}
+							onChange={(event) => setName(event.target.value)}
+							placeholder="Tên nhóm"
+							required
+							value={name}
+						/>
+					</div>
+					<Button disabled={createGroup.isPending} type="submit">
+						{createGroup.isPending ? "Đang tạo…" : "Tạo nhóm"}
+					</Button>
+				</form>
+				{createGroup.isError ? (
+					<p className="text-destructive text-xs" role="alert">
+						Không thể tạo nhóm. Tên nhóm có thể đã được sử dụng.
+					</p>
+				) : null}
+				{groups.isPending ? (
+					<p className="text-muted-foreground text-sm">Đang tải nhóm…</p>
+				) : null}
+				{groups.isError ? (
+					<p className="text-destructive text-xs" role="alert">
+						Không thể tải danh sách nhóm.
+					</p>
+				) : null}
+				{groups.data?.length === 0 ? (
+					<p className="text-muted-foreground text-sm">Lớp chưa có nhóm.</p>
+				) : null}
+				{groups.data?.map((group) => (
+					<GroupCard enrollments={enrollments} group={group} key={group.id} />
+				))}
+			</CardContent>
+		</Card>
+	);
+}
+
+function GroupCard({
+	group,
+	enrollments,
+}: {
+	group: ClassroomGroup;
+	enrollments: Enrollment[];
+}) {
+	const queryClient = useQueryClient();
+	const [name, setName] = useState(group.name);
+	const [learnerId, setLearnerId] = useState("");
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+	const invalidateGroups = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.teacher.listGroups.key(),
+		});
+	};
+	const updateGroup = useMutation({
+		...orpc.teacher.updateGroup.mutationOptions(),
+		onSuccess: async () => {
+			setIsEditing(false);
+			await invalidateGroups();
+			toast.success("Đã đổi tên nhóm");
+		},
+	});
+	const deleteGroup = useMutation({
+		...orpc.teacher.deleteGroup.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateGroups();
+			toast.success("Đã xóa nhóm");
+		},
+	});
+	const addMember = useMutation({
+		...orpc.teacher.addGroupMember.mutationOptions(),
+		onSuccess: async () => {
+			setLearnerId("");
+			await invalidateGroups();
+			toast.success("Đã thêm học viên vào nhóm");
+		},
+	});
+	const removeMember = useMutation({
+		...orpc.teacher.removeGroupMember.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateGroups();
+			toast.success("Đã xóa học viên khỏi nhóm");
+		},
+	});
+	const memberIds = new Set(group.members.map((member) => member.learnerId));
+	const availableEnrollments = enrollments.filter(
+		(enrollment) =>
+			enrollment.status === "active" && !memberIds.has(enrollment.learnerId),
+	);
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!name.trim()) return;
+		updateGroup.mutate({ groupId: group.id, name });
+	};
+	const handleAddMember = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!learnerId) return;
+		addMember.mutate({ groupId: group.id, learnerId });
+	};
+	const hasError =
+		updateGroup.isError ||
+		deleteGroup.isError ||
+		addMember.isError ||
+		removeMember.isError;
+
+	return (
+		<section
+			className="space-y-3 border p-4"
+			aria-labelledby={`group-${group.id}`}
+		>
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<h3 className="font-medium" id={`group-${group.id}`}>
+					{group.name} · {group.members.length} học viên
+				</h3>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => setIsEditing((current) => !current)}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy sửa" : "Đổi tên"}
+					</Button>
+					<Button
+						disabled={deleteGroup.isPending}
+						onClick={() => {
+							if (isConfirmingDelete) {
+								deleteGroup.mutate({ groupId: group.id });
+								return;
+							}
+							setIsConfirmingDelete(true);
+						}}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						{deleteGroup.isPending
+							? "Đang xóa…"
+							: isConfirmingDelete
+								? "Xác nhận xóa"
+								: "Xóa"}
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form className="flex gap-2" onSubmit={handleUpdate}>
+					<label className="sr-only" htmlFor={`group-name-${group.id}`}>
+						Tên nhóm
+					</label>
+					<input
+						className={fieldClassName}
+						id={`group-name-${group.id}`}
+						maxLength={120}
+						onChange={(event) => setName(event.target.value)}
+						required
+						value={name}
+					/>
+					<Button disabled={updateGroup.isPending} size="sm" type="submit">
+						Lưu
+					</Button>
+				</form>
+			) : null}
+			<form className="flex gap-2" onSubmit={handleAddMember}>
+				<label className="sr-only" htmlFor={`group-learner-${group.id}`}>
+					Chọn học viên
+				</label>
+				<select
+					className={fieldClassName}
+					disabled={availableEnrollments.length === 0}
+					id={`group-learner-${group.id}`}
+					onChange={(event) => setLearnerId(event.target.value)}
+					value={learnerId}
+				>
+					<option value="">Chọn học viên đang ghi danh</option>
+					{availableEnrollments.map((enrollment) => (
+						<option key={enrollment.learnerId} value={enrollment.learnerId}>
+							{enrollment.learnerName} ({enrollment.email})
+						</option>
+					))}
+				</select>
+				<Button
+					disabled={!learnerId || addMember.isPending}
+					size="sm"
+					type="submit"
+				>
+					Thêm vào nhóm
+				</Button>
+			</form>
+			{group.members.length === 0 ? (
+				<p className="text-muted-foreground text-sm">Nhóm chưa có học viên.</p>
+			) : (
+				<ul className="space-y-2">
+					{group.members.map((member) => (
+						<li
+							className="flex items-center justify-between gap-3"
+							key={member.learnerId}
+						>
+							<span className="text-sm">
+								{member.learnerName} · {member.email}
+							</span>
+							<Button
+								disabled={removeMember.isPending}
+								onClick={() =>
+									removeMember.mutate({
+										groupId: group.id,
+										learnerId: member.learnerId,
+									})
+								}
+								size="sm"
+								type="button"
+								variant="outline"
+							>
+								Xóa khỏi nhóm
+							</Button>
+						</li>
+					))}
+				</ul>
+			)}
+			{hasError ? (
+				<p className="text-destructive text-xs" role="alert">
+					Không thể cập nhật nhóm. Hãy kiểm tra thông tin và thử lại.
+				</p>
+			) : null}
+		</section>
+	);
+}
+
+const toDateInputValue = (date: Date | null): string => {
+	if (!date) return "";
+	const timezoneOffset = date.getTimezoneOffset() * 60_000;
+	return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
+function AssignmentManager() {
+	const assignments = useQuery(orpc.assignments.listTeacher.queryOptions());
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Bài đã giao</CardTitle>
+				<CardDescription>
+					Theo dõi, đổi hạn nộp hoặc xóa bài tập bạn đã giao.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{assignments.isPending ? (
+					<p className="text-muted-foreground text-sm">Đang tải bài đã giao…</p>
+				) : null}
+				{assignments.isError ? (
+					<p className="text-destructive text-xs" role="alert">
+						Không thể tải danh sách bài đã giao.
+					</p>
+				) : null}
+				{assignments.data?.length === 0 ? (
+					<p className="text-muted-foreground text-sm">
+						Chưa có bài tập nào được giao.
+					</p>
+				) : null}
+				{assignments.data?.length ? (
+					<ul className="space-y-3">
+						{assignments.data.map((assignment) => (
+							<AssignmentRow assignment={assignment} key={assignment.id} />
+						))}
+					</ul>
+				) : null}
+			</CardContent>
+		</Card>
+	);
+}
+
+function AssignmentRow({ assignment }: { assignment: TeacherAssignment }) {
+	const queryClient = useQueryClient();
+	const [dueAt, setDueAt] = useState(toDateInputValue(assignment.dueAt));
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+	const invalidateAssignments = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.assignments.listTeacher.key(),
+		});
+	};
+	const updateAssignment = useMutation({
+		...orpc.assignments.update.mutationOptions(),
+		onSuccess: async () => {
+			setIsEditing(false);
+			await invalidateAssignments();
+			toast.success("Đã cập nhật hạn nộp");
+		},
+	});
+	const deleteAssignment = useMutation({
+		...orpc.assignments.delete.mutationOptions(),
+		onSuccess: async () => {
+			await invalidateAssignments();
+			toast.success("Đã xóa bài được giao");
+		},
+	});
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		updateAssignment.mutate({
+			assignmentId: assignment.id,
+			dueAt: dueAt ? new Date(`${dueAt}T23:59:59`) : null,
+		});
+	};
+	const targetLabels = {
+		classroom: "Lớp",
+		group: "Nhóm",
+		learner: "Học viên",
+	} as const;
+
+	return (
+		<li className="border-b pb-3 last:border-0">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p className="font-medium text-sm">{assignment.title}</p>
+					<p className="text-muted-foreground text-xs">
+						{targetLabels[assignment.targetType]}: {assignment.targetName}
+						{" · "}
+						{assignment.dueAt
+							? `Hạn ${assignment.dueAt.toLocaleDateString("vi-VN")}`
+							: "Không có hạn nộp"}
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => setIsEditing((current) => !current)}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy sửa" : "Sửa hạn"}
+					</Button>
+					<Button
+						disabled={deleteAssignment.isPending}
+						onClick={() => {
+							if (isConfirmingDelete) {
+								deleteAssignment.mutate({ assignmentId: assignment.id });
+								return;
+							}
+							setIsConfirmingDelete(true);
+						}}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						{deleteAssignment.isPending
+							? "Đang xóa…"
+							: isConfirmingDelete
+								? "Xác nhận xóa"
+								: "Xóa"}
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form className="mt-3 flex gap-2" onSubmit={handleUpdate}>
+					<label
+						className="sr-only"
+						htmlFor={`assignment-due-${assignment.id}`}
+					>
+						Hạn nộp
+					</label>
+					<input
+						className={fieldClassName}
+						id={`assignment-due-${assignment.id}`}
+						onChange={(event) => setDueAt(event.target.value)}
+						type="date"
+						value={dueAt}
+					/>
+					<Button disabled={updateAssignment.isPending} size="sm" type="submit">
+						Lưu
+					</Button>
+				</form>
+			) : null}
+			{updateAssignment.isError || deleteAssignment.isError ? (
+				<p className="mt-2 text-destructive text-xs" role="alert">
+					Không thể cập nhật bài đã giao.
+				</p>
+			) : null}
+		</li>
 	);
 }
