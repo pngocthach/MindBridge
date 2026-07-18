@@ -16,6 +16,7 @@ import {
 	LayoutDashboard,
 	LogOut,
 	ShieldCheck,
+	UserRound,
 	Users,
 } from "lucide-react";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
@@ -30,7 +31,7 @@ const roleLabels = {
 const SIDEBAR_STORAGE_KEY = "mindbridge:sidebar-collapsed";
 
 type NavItem = {
-	group: "content" | "management" | "workspace";
+	group: "account" | "content" | "management" | "workspace";
 	icon: ComponentType<{ "aria-hidden"?: boolean; "data-icon"?: string }>;
 	label: string;
 	roles: readonly string[];
@@ -87,15 +88,28 @@ const navItems: readonly NavItem[] = [
 		roles: ["admin", "editor", "teacher"],
 		to: "/content-studio",
 	},
+	{
+		group: "account",
+		icon: UserRound,
+		label: "Hồ sơ cá nhân",
+		roles: ["learner", "teacher", "editor", "admin"],
+		to: "/profile",
+	},
 ];
 
 const navGroupLabels = {
+	account: "Tài khoản",
 	content: "Nội dung",
 	management: "Quản lý",
 	workspace: "Không gian làm việc",
 } as const;
 
-const navGroupOrder = ["workspace", "management", "content"] as const;
+const navGroupOrder = [
+	"workspace",
+	"management",
+	"content",
+	"account",
+] as const;
 
 type AppShellProps = {
 	children: ReactNode;
