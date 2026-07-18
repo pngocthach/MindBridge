@@ -761,7 +761,13 @@ function MiloChat({ lesson, skillProfile }: MiloChatProps) {
 							id="milo-question"
 							maxLength={2000}
 							onChange={(event) => setQuestion(event.target.value)}
-							placeholder="Hỏi Milo về bài đang mở…"
+							onKeyDown={(event) => {
+								if (event.key === "Enter" && !event.shiftKey) {
+									event.preventDefault();
+									event.currentTarget.form?.requestSubmit();
+								}
+							}}
+							placeholder="Hỏi Milo về bài đang mở… (Enter để gửi, Shift+Enter xuống dòng)"
 							required
 							value={question}
 						/>
