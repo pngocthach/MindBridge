@@ -98,7 +98,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
 
         
         async GenerateLessonDraft(
-        source_chunks: types.SourceChunk[],
+        source_chunks: types.SourceChunk[],custom_instructions?: string | null,
         __baml_options__?: BamlCallOptions<never>
         ): Promise<types.LessonDraft> {
           try {
@@ -112,7 +112,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
           // Check if onTick is provided - route through streaming if so
           if (__options__.onTick) {
           const __stream__ = this.stream.GenerateLessonDraft(
-          source_chunks,
+          source_chunks,custom_instructions,
           __baml_options__
           );
 
@@ -136,7 +136,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             const __raw__ = await this.runtime.callFunction(
             "GenerateLessonDraft",
             {
-            "source_chunks": source_chunks
+            "source_chunks": source_chunks,"custom_instructions": custom_instructions?? null
             },
             this.ctxManager.cloneContext(),
             __options__.tb?.__tb(),
@@ -168,7 +168,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
 
             
             GenerateLessonDraft(
-            source_chunks: types.SourceChunk[],
+            source_chunks: types.SourceChunk[],custom_instructions?: string | null,
             __baml_options__?: BamlCallOptions<never>
             ): BamlStream<partial_types.LessonDraft, types.LessonDraft>
               {
@@ -217,7 +217,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                 const __raw__ = this.runtime.streamFunction(
                 "GenerateLessonDraft",
                 {
-                "source_chunks": source_chunks
+                "source_chunks": source_chunks,"custom_instructions": custom_instructions ?? null
                 },
                 undefined,
                 this.ctxManager.cloneContext(),

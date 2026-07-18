@@ -516,6 +516,7 @@ export default function ContentStudio({
 	const [learningObjectives, setLearningObjectives] = useState("");
 	const [prerequisites, setPrerequisites] = useState("");
 	const [skillIds, setSkillIds] = useState("");
+	const [customInstructions, setCustomInstructions] = useState("");
 	const [pastedText, setPastedText] = useState("");
 	const [pendingFile, setPendingFile] = useState<File | null>(null);
 	const [sourceError, setSourceError] = useState("");
@@ -683,6 +684,7 @@ export default function ContentStudio({
 			let receivedTerminalEvent = false;
 			const stream = await client.contentGeneration.generateLessonDraft({
 				courseId: selectedCourse.id,
+				customInstructions: customInstructions.trim() || undefined,
 				documentId: source.documentId,
 				metadata: {
 					difficulty,
@@ -966,6 +968,23 @@ export default function ContentStudio({
 									onChange={(event) => setSkillIds(event.target.value)}
 									value={skillIds}
 								/>
+							</div>
+							<div className="space-y-2 sm:col-span-2">
+								<Label htmlFor="custom-instructions">
+									Yêu cầu riêng cho AI (không bắt buộc)
+								</Label>
+								<Textarea
+									id="custom-instructions"
+									maxLength={2000}
+									onChange={(event) =>
+										setCustomInstructions(event.target.value)
+									}
+									placeholder="Ví dụ: Tập trung vào ví dụ thực tế, giọng văn thân thiện, thêm nhiều câu hỏi vận dụng…"
+									value={customInstructions}
+								/>
+								<p className="text-muted-foreground text-xs">
+									AI vẫn chỉ dùng dữ kiện trong tài liệu nguồn.
+								</p>
 							</div>
 							<div className="space-y-2 sm:col-span-2">
 								<Label htmlFor="pasted-source">Hoặc dán nội dung</Label>

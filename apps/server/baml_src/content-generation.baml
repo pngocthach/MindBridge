@@ -42,10 +42,15 @@ class LessonDraft {
   exercises Exercise[]
 }
 
-function GenerateLessonDraft(source_chunks: SourceChunk[]) -> LessonDraft {
+function GenerateLessonDraft(source_chunks: SourceChunk[], custom_instructions: string?) -> LessonDraft {
   client MindBridgeModel
   prompt #"
     Bạn là chuyên gia thiết kế học liệu. Chỉ sử dụng thông tin trong các đoạn tài liệu nguồn dưới đây để tạo học liệu tiếng Việt.
+
+    {% if custom_instructions %}
+    YÊU CẦU RIÊNG TỪ GIÁO VIÊN (ưu tiên tuân theo, nhưng vẫn chỉ dùng dữ kiện trong tài liệu nguồn):
+    {{ custom_instructions }}
+    {% endif %}
 
     Yêu cầu:
     - BẮT BUỘC trả về đủ mọi trường của LessonDraft. Hai trường đầu tiên phải là `title` (chuỗi không rỗng) và `summary` (chuỗi không rỗng).

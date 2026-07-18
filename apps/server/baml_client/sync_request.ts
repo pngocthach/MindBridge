@@ -40,7 +40,7 @@ export class HttpRequest {
 
   
   GenerateLessonDraft(
-      source_chunks: types.SourceChunk[],
+      source_chunks: types.SourceChunk[],custom_instructions?: string | null,
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -59,7 +59,7 @@ export class HttpRequest {
       return this.runtime.buildRequestSync(
         "GenerateLessonDraft",
         {
-          "source_chunks": source_chunks
+          "source_chunks": source_chunks,"custom_instructions": custom_instructions?? null
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -79,7 +79,7 @@ export class HttpStreamRequest {
 
   
   GenerateLessonDraft(
-      source_chunks: types.SourceChunk[],
+      source_chunks: types.SourceChunk[],custom_instructions?: string | null,
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -98,7 +98,7 @@ export class HttpStreamRequest {
       return this.runtime.buildRequestSync(
         "GenerateLessonDraft",
         {
-          "source_chunks": source_chunks
+          "source_chunks": source_chunks,"custom_instructions": custom_instructions?? null
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

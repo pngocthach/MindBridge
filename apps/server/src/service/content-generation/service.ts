@@ -189,12 +189,16 @@ export class LessonGenerationService implements ContentGenerationPort {
 				return { id: referenceId, text: chunk.text };
 			});
 
-			const stream = b.stream.GenerateLessonDraft(bamlChunks, {
-				clientRegistry,
-				collector,
-				tb: typeBuilder,
-				signal: input.signal,
-			});
+			const stream = b.stream.GenerateLessonDraft(
+				bamlChunks,
+				input.customInstructions?.trim() || null,
+				{
+					clientRegistry,
+					collector,
+					tb: typeBuilder,
+					signal: input.signal,
+				},
+			);
 			for await (const partial of stream) {
 				yield {
 					draft: partial as unknown as Record<string, unknown>,

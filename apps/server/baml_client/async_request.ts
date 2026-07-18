@@ -44,7 +44,7 @@ env?: Record<string, string | undefined>
 
   
   async GenerateLessonDraft(
-  source_chunks: types.SourceChunk[],
+  source_chunks: types.SourceChunk[],custom_instructions?: string | null,
   __baml_options__?: BamlCallOptions<never>
   ): Promise<HTTPRequest> {
     try {
@@ -63,7 +63,7 @@ env?: Record<string, string | undefined>
       return await this.runtime.buildRequest(
       "GenerateLessonDraft",
       {
-      "source_chunks": source_chunks
+      "source_chunks": source_chunks,"custom_instructions": custom_instructions?? null
       },
       this.ctxManager.cloneContext(),
       __baml_options__?.tb?.__tb(),
@@ -83,7 +83,7 @@ env?: Record<string, string | undefined>
 
       
       async GenerateLessonDraft(
-      source_chunks: types.SourceChunk[],
+      source_chunks: types.SourceChunk[],custom_instructions?: string | null,
       __baml_options__?: BamlCallOptions<never>
       ): Promise<HTTPRequest> {
         try {
@@ -102,7 +102,7 @@ env?: Record<string, string | undefined>
           return await this.runtime.buildRequest(
           "GenerateLessonDraft",
           {
-          "source_chunks": source_chunks
+          "source_chunks": source_chunks,"custom_instructions": custom_instructions?? null
           },
           this.ctxManager.cloneContext(),
           __baml_options__?.tb?.__tb(),

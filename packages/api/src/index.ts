@@ -59,6 +59,7 @@ export interface GenerateLessonDraftInput {
 	canUseAnySource: boolean;
 	chunkIds?: string[];
 	courseId: string;
+	customInstructions?: string;
 	documentId: string;
 	metadata: ContentDraftMetadata;
 	requestedBy: string;

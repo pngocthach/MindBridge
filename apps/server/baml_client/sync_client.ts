@@ -98,7 +98,7 @@ export class BamlSyncClient {
 
   
   GenerateLessonDraft(
-      source_chunks: types.SourceChunk[],
+      source_chunks: types.SourceChunk[],custom_instructions?: string | null,
       __baml_options__?: BamlCallOptions<never>
   ): types.LessonDraft {
     try {
@@ -130,7 +130,7 @@ export class BamlSyncClient {
       const __raw__ = this.runtime.callFunctionSync(
         "GenerateLessonDraft",
         {
-          "source_chunks": source_chunks
+          "source_chunks": source_chunks,"custom_instructions": custom_instructions?? null
         },
         this.ctxManager.cloneContext(),
         __options__.tb?.__tb(),

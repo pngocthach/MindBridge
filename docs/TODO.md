@@ -14,7 +14,7 @@
 - [x] Bỏ mấy cái khối lớp, mô tả hoặc để optional
 - [x] Thêm dấu sao required cho mấy chỗ chưa có
 - [ ] Check lại mấy cái skill id xem có cần không
-- [ ] Cho user custom prompt lúc gen bài học (optional)
+- [x] Cho user custom prompt lúc gen bài học (optional)
 - [x] Cái AI gen ra mới readonly, chưa edit được
 - [x] Thêm 1 cái feedback sau khi gen ra để có thể gen lại / gen tiếp
 - [ ] Cái lộ trình học chưa lấy được quizz ra

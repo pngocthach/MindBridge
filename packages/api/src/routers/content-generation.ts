@@ -41,6 +41,7 @@ export const contentGenerationRouter = {
 			z.object({
 				chunkIds: z.array(z.string().uuid()).min(1).optional(),
 				courseId: z.string().uuid(),
+				customInstructions: z.string().trim().max(2_000).optional(),
 				documentId: z.string().uuid(),
 				metadata: contentDraftMetadata,
 			}),
