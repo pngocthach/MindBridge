@@ -46,9 +46,9 @@ function RootDocument() {
 				<HeadContent />
 			</head>
 			<body>
-				<main className="min-h-svh">
+				<div className="min-h-svh">
 					<Outlet />
-				</main>
+				</div>
 				<Toaster richColors />
 				<Scripts />
 			</body>

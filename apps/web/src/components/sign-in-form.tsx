@@ -16,6 +16,7 @@ import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
+import AuthShell from "./auth-shell";
 import Loader from "./loader";
 
 export default function SignInForm({
@@ -65,8 +66,8 @@ export default function SignInForm({
 	}
 
 	return (
-		<main className="flex min-h-svh items-center justify-center p-4">
-			<Card className="w-full max-w-md">
+		<AuthShell>
+			<Card className="w-full border-blue-100 bg-white/95 shadow-xl shadow-blue-950/8">
 				<CardHeader>
 					<CardTitle className="text-2xl">Chào mừng bạn trở lại</CardTitle>
 					<CardDescription>
@@ -92,7 +93,7 @@ export default function SignInForm({
 										name={field.name}
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
-										placeholder="ban@example.com"
+										placeholder="email@gmail.com"
 										type="email"
 										value={field.state.value}
 									/>
@@ -157,6 +158,6 @@ export default function SignInForm({
 					</Button>
 				</CardFooter>
 			</Card>
-		</main>
+		</AuthShell>
 	);
 }
