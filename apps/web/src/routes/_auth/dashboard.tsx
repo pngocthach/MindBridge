@@ -128,35 +128,11 @@ function Dashboard() {
 
 function LearnerDashboard({ learnerName }: { learnerName: string }) {
 	const profile = useQuery(orpc.learner.getProfile.queryOptions());
-	const hasProfile = profile.data !== undefined && profile.data !== null;
-	const courses = useQuery(
-		orpc.learner.listCourses.queryOptions({ enabled: hasProfile }),
-	);
-	const assignments = useQuery(
-		orpc.assignments.listInbox.queryOptions({ enabled: hasProfile }),
-	);
+	const courses = useQuery(orpc.learner.listCourses.queryOptions());
+	const assignments = useQuery(orpc.assignments.listInbox.queryOptions());
 	const [selectedClassroomId, setSelectedClassroomId] = useState<string>();
 	const [selectedContentId, setSelectedContentId] = useState<string>();
 
-	if (profile.isPending) {
-		return <Loader />;
-	}
-	if (profile.isError) {
-		return (
-			<section
-				className="border border-destructive/30 bg-destructive/10 p-6"
-				role="alert"
-			>
-				<h1 className="font-semibold text-lg">Không thể tải hồ sơ học tập</h1>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Hãy tải lại trang hoặc thử lại sau ít phút.
-				</p>
-			</section>
-		);
-	}
-	if (profile.data === null) {
-		return <LearnerProfilePanel learnerName={learnerName} profile={null} />;
-	}
 	if (courses.isPending || assignments.isPending) {
 		return <Loader />;
 	}
@@ -267,7 +243,22 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 					) : null}
 				</div>
 			)}
-			<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,.7fr)]">
+			{profile.data ? (
+				<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,.7fr)]">
+					<AssignmentInbox
+						assignments={assignments.data ?? []}
+						isError={assignments.isError}
+						onOpenAssignment={(classroomId, contentId) => {
+							setSelectedClassroomId(classroomId);
+							setSelectedContentId(contentId);
+						}}
+					/>
+					<LearnerProfilePanel
+						learnerName={learnerName}
+						profile={profile.data}
+					/>
+				</div>
+			) : (
 				<AssignmentInbox
 					assignments={assignments.data ?? []}
 					isError={assignments.isError}
@@ -276,8 +267,7 @@ function LearnerDashboard({ learnerName }: { learnerName: string }) {
 						setSelectedContentId(contentId);
 					}}
 				/>
-				<LearnerProfilePanel learnerName={learnerName} profile={profile.data} />
-			</div>
+			)}
 		</section>
 	);
 }
