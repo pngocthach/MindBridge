@@ -40,6 +40,7 @@ export type ContentGenerationEvent =
 	| {
 			contentId: string;
 			contentVersionId: string;
+			draft: Record<string, unknown>;
 			generationId: string;
 			type: "completed";
 	  }

@@ -13,6 +13,7 @@ export const contentValueToText = (value: unknown): string => {
 	if (Array.isArray(value)) {
 		return value.map(contentValueToText).filter(Boolean).join("\n");
 	}
+
 	if (isRecord(value)) {
 		return Object.values(value)
 			.map(contentValueToText)
@@ -20,6 +21,18 @@ export const contentValueToText = (value: unknown): string => {
 			.join("\n");
 	}
 	return "";
+};
+
+const getOptionLabel = (index: number): string => {
+	let value = index;
+	let label = "";
+
+	do {
+		label = String.fromCharCode(65 + (value % 26)) + label;
+		value = Math.floor(value / 26) - 1;
+	} while (value >= 0);
+
+	return label;
 };
 
 const getContentBlocks = (body: unknown): ContentBlock[] => {
@@ -116,8 +129,11 @@ export const getLessonMarkdown = (body: unknown): string => {
 				.map((question, index) => {
 					const options = Array.isArray(question.options)
 						? question.options
-								.map((option) => `- ${contentValueToText(option)}`)
-								.join("\n")
+								.map(
+									(option, optionIndex) =>
+										`${getOptionLabel(optionIndex)}. ${contentValueToText(option)}`,
+								)
+								.join("  \n")
 						: "";
 					return `### Câu ${index + 1}. ${contentValueToText(question.question)}\n\n${options}${
 						question.correct_answer
