@@ -420,8 +420,8 @@ function LessonCard({
 						onClick={() => {
 							onAskSelection(selection.text);
 							setSelection(null);
-							window.getSelection()?.removeAllRanges();
 						}}
+						onMouseDown={(event) => event.preventDefault()}
 						ref={askButtonRef}
 						style={{ left: selection.x, top: selection.y - 8 }}
 						type="button"
