@@ -11,10 +11,11 @@ import {
 	learnerSkillMastery,
 	learningContent,
 	skill,
+	teacherFeedback,
 	user,
 } from "@MindBridge/db";
 import { ORPCError } from "@orpc/server";
-import { and, asc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { permissionProcedure } from "../index";
@@ -65,6 +66,28 @@ const assignmentInput = z
 		{ message: "Choose exactly one classroom, group, or learner target." },
 	);
 
+const feedbackIdInput = z.object({ feedbackId: z.string().uuid() });
+
+const feedbackValues = z.object({
+	note: z.string().trim().min(1).max(5000),
+});
+
+const createFeedbackInput = feedbackValues.extend({
+	classroomId: z.string().uuid(),
+	learnerId: z.string().trim().min(1),
+});
+
+const teacherProcedure = permissionProcedure("class:read").use(
+	async ({ context, next }) => {
+		if (context.role !== "teacher") {
+			throw new ORPCError("FORBIDDEN", {
+				message: "This procedure is only available to teachers.",
+			});
+		}
+		return next({ context });
+	},
+);
+
 const getTeacherClassrooms = async (
 	teacherId: string,
 	classroomId?: string,
@@ -114,6 +137,31 @@ const requireTeacherGroup = async (teacherId: string, groupId: string) => {
 		throw new ORPCError("NOT_FOUND", { message: "Group not found." });
 	}
 	return ownedGroup;
+};
+
+const requireActiveLearner = async (
+	teacherId: string,
+	classroomId: string,
+	learnerId: string,
+) => {
+	await requireTeacherClassroom(teacherId, classroomId);
+	const [enrollment] = await db
+		.select({ learnerId: classroomEnrollment.learnerId })
+		.from(classroomEnrollment)
+		.where(
+			and(
+				eq(classroomEnrollment.classroomId, classroomId),
+				eq(classroomEnrollment.learnerId, learnerId),
+				eq(classroomEnrollment.status, "active"),
+			),
+		)
+		.limit(1);
+	if (!enrollment) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Active learner enrollment not found.",
+		});
+	}
+	return enrollment;
 };
 
 export const teacherRouter = {
@@ -378,6 +426,30 @@ export const teacherRouter = {
 				.returning();
 			return createdGroup;
 		}),
+	createFeedback: teacherProcedure
+		.input(createFeedbackInput)
+		.handler(async ({ context, input }) => {
+			await requireActiveLearner(
+				context.session.user.id,
+				input.classroomId,
+				input.learnerId,
+			);
+			const [createdFeedback] = await db
+				.insert(teacherFeedback)
+				.values({
+					feedbackType: "content",
+					learnerId: input.learnerId,
+					note: input.note,
+					teacherId: context.session.user.id,
+				})
+				.returning();
+			if (!createdFeedback) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Feedback could not be created.",
+				});
+			}
+			return createdFeedback;
+		}),
 	deactivateEnrollment: permissionProcedure("class:read")
 		.input(enrollmentInput)
 		.handler(async ({ context, input }) => {
@@ -540,6 +612,33 @@ export const teacherRouter = {
 				members: members.filter(({ groupId }) => groupId === group.id),
 			}));
 		}),
+	listFeedback: teacherProcedure
+		.input(classroomIdInput)
+		.handler(async ({ context, input }) => {
+			await requireTeacherClassroom(context.session.user.id, input.classroomId);
+			return db
+				.select({
+					assignmentId: teacherFeedback.assignmentId,
+					createdAt: teacherFeedback.createdAt,
+					feedbackType: teacherFeedback.feedbackType,
+					id: teacherFeedback.id,
+					learnerId: teacherFeedback.learnerId,
+					learnerName: user.name,
+					note: teacherFeedback.note,
+					recommendationId: teacherFeedback.recommendationId,
+				})
+				.from(teacherFeedback)
+				.innerJoin(user, eq(user.id, teacherFeedback.learnerId))
+				.innerJoin(
+					classroomEnrollment,
+					and(
+						eq(classroomEnrollment.learnerId, teacherFeedback.learnerId),
+						eq(classroomEnrollment.classroomId, input.classroomId),
+					),
+				)
+				.where(eq(teacherFeedback.teacherId, context.session.user.id))
+				.orderBy(desc(teacherFeedback.createdAt), desc(teacherFeedback.id));
+		}),
 	removeGroupMember: permissionProcedure("class:read")
 		.input(groupMemberInput)
 		.handler(async ({ context, input }) => {
@@ -559,6 +658,23 @@ export const teacherRouter = {
 				});
 			}
 			return removedMember;
+		}),
+	deleteFeedback: teacherProcedure
+		.input(feedbackIdInput)
+		.handler(async ({ context, input }) => {
+			const [deletedFeedback] = await db
+				.delete(teacherFeedback)
+				.where(
+					and(
+						eq(teacherFeedback.id, input.feedbackId),
+						eq(teacherFeedback.teacherId, context.session.user.id),
+					),
+				)
+				.returning({ id: teacherFeedback.id });
+			if (!deletedFeedback) {
+				throw new ORPCError("NOT_FOUND", { message: "Feedback not found." });
+			}
+			return deletedFeedback;
 		}),
 	deleteGroup: permissionProcedure("class:read")
 		.input(groupIdInput)
@@ -580,6 +696,24 @@ export const teacherRouter = {
 				.where(eq(classroomGroup.id, input.groupId))
 				.returning();
 			return updatedGroup;
+		}),
+	updateFeedback: teacherProcedure
+		.input(feedbackIdInput.extend(feedbackValues.shape))
+		.handler(async ({ context, input }) => {
+			const [updatedFeedback] = await db
+				.update(teacherFeedback)
+				.set({ note: input.note })
+				.where(
+					and(
+						eq(teacherFeedback.id, input.feedbackId),
+						eq(teacherFeedback.teacherId, context.session.user.id),
+					),
+				)
+				.returning();
+			if (!updatedFeedback) {
+				throw new ORPCError("NOT_FOUND", { message: "Feedback not found." });
+			}
+			return updatedFeedback;
 		}),
 	updateClassroom: permissionProcedure("class:read")
 		.input(classroomDetailsInput.extend({ classroomId: z.string().uuid() }))

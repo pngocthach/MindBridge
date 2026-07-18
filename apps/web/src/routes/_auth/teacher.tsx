@@ -12,6 +12,7 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@MindBridge/ui/components/empty";
+import { Textarea } from "@MindBridge/ui/components/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -140,6 +141,9 @@ type ClassroomGroup = Awaited<
 >[number];
 type TeacherAssignment = Awaited<
 	ReturnType<typeof orpc.assignments.listTeacher.call>
+>[number];
+type TeacherFeedback = Awaited<
+	ReturnType<typeof orpc.teacher.listFeedback.call>
 >[number];
 function CreateClassroomForm({
 	courseOptions,
@@ -625,7 +629,224 @@ function ClassroomCard({
 				classroomId={classroom.id}
 				enrollments={enrollments.data ?? []}
 			/>
+			<FeedbackManager
+				classroomId={classroom.id}
+				enrollments={enrollments.data ?? []}
+			/>
 		</div>
+	);
+}
+
+function FeedbackManager({
+	classroomId,
+	enrollments,
+}: {
+	classroomId: string;
+	enrollments: Enrollment[];
+}) {
+	const queryClient = useQueryClient();
+	const [learnerId, setLearnerId] = useState("");
+	const [note, setNote] = useState("");
+	const feedback = useQuery(
+		orpc.teacher.listFeedback.queryOptions({ input: { classroomId } }),
+	);
+	const refreshFeedback = async () => {
+		await queryClient.invalidateQueries({
+			queryKey: orpc.teacher.listFeedback.key(),
+		});
+	};
+	const createFeedback = useMutation({
+		...orpc.teacher.createFeedback.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			setLearnerId("");
+			setNote("");
+			await refreshFeedback();
+			toast.success("Đã tạo phản hồi cho học viên");
+		},
+	});
+	const activeEnrollments = enrollments.filter(
+		(enrollment) => enrollment.status === "active",
+	);
+	const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!learnerId || !note.trim()) return;
+		createFeedback.mutate({ classroomId, learnerId, note });
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Phản hồi giáo viên</CardTitle>
+				<CardDescription>
+					Ghi nhận và quản lý phản hồi dành cho học viên trong lớp này.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<form className="space-y-3 border p-4" onSubmit={handleCreate}>
+					<label className="block space-y-1 text-sm">
+						<span>Học viên</span>
+						<select
+							className={fieldClassName}
+							disabled={activeEnrollments.length === 0}
+							onChange={(event) => setLearnerId(event.target.value)}
+							required
+							value={learnerId}
+						>
+							<option value="">Chọn học viên đang ghi danh</option>
+							{activeEnrollments.map((enrollment) => (
+								<option key={enrollment.learnerId} value={enrollment.learnerId}>
+									{enrollment.learnerName} ({enrollment.email})
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="block space-y-1 text-sm">
+						<span>Nội dung phản hồi</span>
+						<Textarea
+							maxLength={5000}
+							onChange={(event) => setNote(event.target.value)}
+							placeholder="Nhập nhận xét hoặc hướng dẫn tiếp theo…"
+							required
+							value={note}
+						/>
+					</label>
+					<Button
+						disabled={!learnerId || !note.trim() || createFeedback.isPending}
+						type="submit"
+					>
+						{createFeedback.isPending ? "Đang lưu…" : "Tạo phản hồi"}
+					</Button>
+				</form>
+
+				{feedback.isPending ? (
+					<p className="text-muted-foreground text-sm">Đang tải phản hồi…</p>
+				) : null}
+				{feedback.isError ? (
+					<p className="text-destructive text-sm" role="alert">
+						Không thể tải phản hồi.
+					</p>
+				) : null}
+				{feedback.data?.length === 0 ? (
+					<p className="text-muted-foreground text-sm">
+						Chưa có phản hồi cho lớp này.
+					</p>
+				) : null}
+				{feedback.data?.length ? (
+					<ul className="space-y-3">
+						{feedback.data.map((item) => (
+							<FeedbackItem
+								feedback={item}
+								key={item.id}
+								onChanged={refreshFeedback}
+							/>
+						))}
+					</ul>
+				) : null}
+			</CardContent>
+		</Card>
+	);
+}
+
+function FeedbackItem({
+	feedback,
+	onChanged,
+}: {
+	feedback: TeacherFeedback;
+	onChanged: () => Promise<void>;
+}) {
+	const [note, setNote] = useState(feedback.note);
+	const [isEditing, setIsEditing] = useState(false);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+	const updateFeedback = useMutation({
+		...orpc.teacher.updateFeedback.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			setIsEditing(false);
+			await onChanged();
+			toast.success("Đã cập nhật phản hồi");
+		},
+	});
+	const deleteFeedback = useMutation({
+		...orpc.teacher.deleteFeedback.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			await onChanged();
+			toast.success("Đã xóa phản hồi");
+		},
+	});
+	const handleUpdate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!note.trim()) return;
+		updateFeedback.mutate({ feedbackId: feedback.id, note });
+	};
+
+	return (
+		<li className="border p-4">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p className="font-medium">{feedback.learnerName}</p>
+					<p className="text-muted-foreground text-xs">
+						{feedback.createdAt.toLocaleDateString("vi-VN")}
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Button
+						onClick={() => {
+							setNote(feedback.note);
+							setIsEditing((current) => !current);
+						}}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						{isEditing ? "Hủy sửa" : "Chỉnh sửa"}
+					</Button>
+					<Button
+						disabled={deleteFeedback.isPending}
+						onClick={() => {
+							if (isConfirmingDelete) {
+								deleteFeedback.mutate({ feedbackId: feedback.id });
+								return;
+							}
+							setIsConfirmingDelete(true);
+						}}
+						size="sm"
+						type="button"
+						variant="destructive"
+					>
+						{deleteFeedback.isPending
+							? "Đang xóa…"
+							: isConfirmingDelete
+								? "Xác nhận xóa"
+								: "Xóa"}
+					</Button>
+				</div>
+			</div>
+			{isEditing ? (
+				<form className="mt-3 space-y-2" onSubmit={handleUpdate}>
+					<label className="sr-only" htmlFor={`feedback-note-${feedback.id}`}>
+						Nội dung phản hồi
+					</label>
+					<Textarea
+						id={`feedback-note-${feedback.id}`}
+						maxLength={5000}
+						onChange={(event) => setNote(event.target.value)}
+						required
+						value={note}
+					/>
+					<Button
+						disabled={!note.trim() || updateFeedback.isPending}
+						size="sm"
+						type="submit"
+					>
+						{updateFeedback.isPending ? "Đang lưu…" : "Lưu phản hồi"}
+					</Button>
+				</form>
+			) : (
+				<p className="mt-3 whitespace-pre-wrap text-sm">{feedback.note}</p>
+			)}
+		</li>
 	);
 }
 
