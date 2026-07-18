@@ -5,6 +5,7 @@ import {
 	assertValidDraft,
 	InvalidGeneratedLessonError,
 } from "./draft-validation";
+import { resolveSourceReferences } from "./source-references";
 
 const sourceChunkIds = new Set(["chunk-1", "chunk-2"]);
 
@@ -41,6 +42,36 @@ const createDraft = (): LessonDraft => ({
 describe("assertValidDraft", () => {
 	it("accepts a draft with five quiz questions, both difficulties, and valid references", () => {
 		expect(() => assertValidDraft(createDraft(), sourceChunkIds)).not.toThrow();
+	});
+
+	it("resolves BAML dynamic source references before validating the draft", () => {
+		const draft = createDraft();
+		draft.summary_source_chunk_ids = ["SOURCE_1"];
+		draft.objectives = draft.objectives.map((objective) => ({
+			...objective,
+			source_chunk_ids: ["SOURCE_1"],
+		}));
+		draft.quiz_questions = draft.quiz_questions.map((question) => ({
+			...question,
+			source_chunk_ids: ["SOURCE_2"],
+		}));
+		draft.exercises = draft.exercises.map((exercise, index) => ({
+			...exercise,
+			source_chunk_ids: [index === 0 ? "SOURCE_1" : "SOURCE_2"],
+		}));
+
+		const normalizedDraft = resolveSourceReferences(
+			draft,
+			new Map([
+				["SOURCE_1", "chunk-1"],
+				["SOURCE_2", "chunk-2"],
+			]),
+		);
+
+		expect(normalizedDraft.summary_source_chunk_ids).toEqual(["chunk-1"]);
+		expect(() =>
+			assertValidDraft(normalizedDraft, sourceChunkIds),
+		).not.toThrow();
 	});
 
 	it("rejects a draft with fewer than five quiz questions", () => {

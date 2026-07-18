@@ -17,26 +17,26 @@ export interface SourceReference {
 export const collectReferences = (draft: LessonDraft): SourceReference[] => {
 	const references: SourceReference[] = [
 		{
-			chunkIds: draft.summary_source_chunk_ids,
+			chunkIds: draft.summary_source_chunk_ids.map(String),
 			referenceKind: "summary",
 		},
 	];
 
 	for (const [index, objective] of draft.objectives.entries()) {
 		references.push({
-			chunkIds: objective.source_chunk_ids,
+			chunkIds: objective.source_chunk_ids.map(String),
 			referenceKind: `objective:${index + 1}`,
 		});
 	}
 	for (const [index, question] of draft.quiz_questions.entries()) {
 		references.push({
-			chunkIds: question.source_chunk_ids,
+			chunkIds: question.source_chunk_ids.map(String),
 			referenceKind: `quiz:${index + 1}`,
 		});
 	}
 	for (const [index, exercise] of draft.exercises.entries()) {
 		references.push({
-			chunkIds: exercise.source_chunk_ids,
+			chunkIds: exercise.source_chunk_ids.map(String),
 			referenceKind: `exercise:${index + 1}`,
 		});
 	}

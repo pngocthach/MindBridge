@@ -52,25 +52,28 @@ export enum ExerciseDifficulty {
   STANDARD = "STANDARD",
 }
 
+export enum SourceChunkId {
+}
+
 export interface Exercise {
   difficulty: ExerciseDifficulty
   prompt: string
   expected_answer: string
   explanation: string
-  source_chunk_ids: string[]
+  source_chunk_ids: (string | SourceChunkId)[]
   
 }
 
 export interface LearningObjective {
   text: string
-  source_chunk_ids: string[]
+  source_chunk_ids: (string | SourceChunkId)[]
   
 }
 
 export interface LessonDraft {
   title: string
   summary: string
-  summary_source_chunk_ids: string[]
+  summary_source_chunk_ids: (string | SourceChunkId)[]
   objectives: LearningObjective[]
   quiz_questions: QuizQuestion[]
   exercises: Exercise[]
@@ -82,7 +85,7 @@ export interface QuizQuestion {
   options: string[]
   correct_answer: string
   explanation: string
-  source_chunk_ids: string[]
+  source_chunk_ids: (string | SourceChunkId)[]
   
 }
 

@@ -14,13 +14,16 @@ import {
 	sourceDocument,
 } from "@MindBridge/db/schema/content";
 import { skill } from "@MindBridge/db/schema/learning";
-import { ClientRegistry } from "@boundaryml/baml";
+import { ClientRegistry, Collector } from "@boundaryml/baml";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { b } from "../../../baml_client";
+import TypeBuilder from "../../../baml_client/type_builder";
+import { logger } from "../../logger";
 import { assertValidDraft, collectReferences } from "./draft-validation";
+import { resolveSourceReferences } from "./source-references";
 
-const MAX_SOURCE_CHARACTERS = 60_000;
+const MAX_SOURCE_CHARACTERS = 400_000;
 
 export class SourceDocumentAccessError extends Error {
 	constructor(message: string) {
@@ -76,7 +79,7 @@ export class LessonGenerationService implements ContentGenerationPort {
 			);
 		}
 
-		const chunks = await db
+		const availableChunks = await db
 			.select({ id: sourceChunk.id, text: sourceChunk.text })
 			.from(sourceChunk)
 			.where(
@@ -86,10 +89,35 @@ export class LessonGenerationService implements ContentGenerationPort {
 				),
 			)
 			.orderBy(asc(sourceChunk.ordinal));
-		if (chunks.length === 0) {
+		if (availableChunks.length === 0) {
 			throw new SourceDocumentAccessError(
 				"Tài liệu không có nội dung đã trích xuất.",
 			);
+		}
+
+		let chunks = availableChunks;
+		if (!input.chunkIds) {
+			const firstSourcePart: typeof availableChunks = [];
+			let sourceCharacterCount = 0;
+			for (const chunk of availableChunks) {
+				if (sourceCharacterCount + chunk.text.length > MAX_SOURCE_CHARACTERS) {
+					break;
+				}
+				firstSourcePart.push(chunk);
+				sourceCharacterCount += chunk.text.length;
+			}
+			chunks = firstSourcePart;
+			if (chunks.length < availableChunks.length) {
+				logger.info(
+					{
+						documentId: input.documentId,
+						selectedChunkCount: chunks.length,
+						sourceCharacterCount,
+						totalChunkCount: availableChunks.length,
+					},
+					"Selected initial source part for lesson generation",
+				);
+			}
 		}
 
 		const sourceCharacterCount = chunks.reduce(
@@ -97,8 +125,16 @@ export class LessonGenerationService implements ContentGenerationPort {
 			0,
 		);
 		if (sourceCharacterCount > MAX_SOURCE_CHARACTERS) {
+			logger.warn(
+				{
+					documentId: input.documentId,
+					sourceCharacterCount,
+					sourceChunkCount: chunks.length,
+				},
+				"Rejected lesson generation because selected source exceeds context limit",
+			);
 			throw new SourceDocumentAccessError(
-				"Tài liệu quá dài để tạo một bản nháp. Hãy chọn ít đoạn nguồn hơn.",
+				"Các đoạn nguồn đã chọn quá dài để tạo một bản nháp.",
 			);
 		}
 
@@ -118,6 +154,17 @@ export class LessonGenerationService implements ContentGenerationPort {
 			createdGeneration,
 			"Không thể lưu yêu cầu tạo học liệu.",
 		);
+		const generationLogger = logger.child({
+			documentId: input.documentId,
+			generationId: generation.id,
+			model: config.model,
+		});
+		const collector = new Collector(`generation:${generation.id}`);
+
+		generationLogger.info(
+			{ sourceCharacterCount, sourceChunkCount: chunks.length },
+			"Starting BAML lesson generation",
+		);
 
 		yield { generationId: generation.id, type: "started" };
 
@@ -129,9 +176,19 @@ export class LessonGenerationService implements ContentGenerationPort {
 				model: config.model,
 			});
 			clientRegistry.setPrimary("MindBridgeModel");
+			const typeBuilder = new TypeBuilder();
+			const sourceChunkIdByReference = new Map<string, string>();
+			const bamlChunks = chunks.map((chunk, index) => {
+				const referenceId = `SOURCE_${index + 1}`;
+				sourceChunkIdByReference.set(referenceId, chunk.id);
+				typeBuilder.SourceChunkId.addValue(referenceId);
+				return { id: referenceId, text: chunk.text };
+			});
 
-			const stream = b.stream.GenerateLessonDraft(chunks, {
+			const stream = b.stream.GenerateLessonDraft(bamlChunks, {
 				clientRegistry,
+				collector,
+				tb: typeBuilder,
 				signal: input.signal,
 			});
 			for await (const partial of stream) {
@@ -141,7 +198,19 @@ export class LessonGenerationService implements ContentGenerationPort {
 				};
 			}
 
-			const draft = await stream.getFinalResponse();
+			const draft = resolveSourceReferences(
+				await stream.getFinalResponse(),
+				sourceChunkIdByReference,
+			);
+			generationLogger.info(
+				{
+					bamlRequestId: collector.last?.id,
+					inputTokens: collector.usage.inputTokens,
+					outputTokens: collector.usage.outputTokens,
+				},
+				"BAML lesson generation completed",
+			);
+
 			assertValidDraft(draft, new Set(chunks.map(({ id }) => id)));
 
 			const { contentId, contentVersionId } = await db.transaction(
@@ -235,6 +304,10 @@ export class LessonGenerationService implements ContentGenerationPort {
 					status: "succeeded",
 				})
 				.where(eq(contentGeneration.id, generation.id));
+			generationLogger.info(
+				{ contentId, contentVersionId },
+				"Persisted generated lesson Draft",
+			);
 
 			yield {
 				contentId,
@@ -244,6 +317,15 @@ export class LessonGenerationService implements ContentGenerationPort {
 			};
 		} catch (error) {
 			const message = getErrorMessage(error);
+			generationLogger.error(
+				{
+					bamlRequestId: collector.last?.id,
+					err: error,
+					inputTokens: collector.usage.inputTokens,
+					outputTokens: collector.usage.outputTokens,
+				},
+				"BAML lesson generation failed",
+			);
 			await db
 				.update(contentGeneration)
 				.set({
