@@ -210,6 +210,7 @@ export class LessonGenerationService implements ContentGenerationPort {
 				},
 				"BAML lesson generation completed",
 			);
+
 			assertValidDraft(draft, new Set(chunks.map(({ id }) => id)));
 
 			const { contentId, contentVersionId } = await db.transaction(
