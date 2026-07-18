@@ -159,7 +159,7 @@ function LearnerPage() {
 						{skills.length === 0 ? (
 							<Empty className="border">
 								<EmptyHeader>
-									<EmptyTitle>Chưa có dữ liệu mastery</EmptyTitle>
+									<EmptyTitle>Chưa có dữ liệu mức độ thành thạo</EmptyTitle>
 									<EmptyDescription>
 										Hãy hoàn thành bài luyện tập đầu tiên để bắt đầu theo dõi
 										tiến bộ.
@@ -391,7 +391,7 @@ function SkillProgress({ skill }: SkillProgressProps) {
 					<CardTitle>{skill.skillName}</CardTitle>
 					{skill.isMastered ? (
 						<CheckCircle2
-							aria-label="Đã đạt mastery"
+							aria-label="Đã đạt mức thành thạo"
 							className="size-4 text-emerald-600"
 						/>
 					) : (

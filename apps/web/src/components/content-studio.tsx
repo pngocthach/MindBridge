@@ -240,7 +240,7 @@ function LessonDraftPreview({
 						</h2>
 					</div>
 					<span className="rounded-full bg-primary/10 px-3 py-1 text-primary text-xs">
-						Draft
+						Bản nháp
 					</span>
 				</div>
 				<div className="border-t px-5 py-4">
@@ -740,7 +740,7 @@ export default function ContentStudio({
 			<header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50/60 p-5 shadow-sm">
 				<div>
 					<p className="font-medium text-primary text-xs uppercase tracking-widest">
-						AI authoring workspace
+						Khu vực soạn bài với AI
 					</p>
 					<h1 className="mt-1 font-semibold text-2xl" id="studio-title">
 						Tạo bài học từ tài liệu
@@ -985,11 +985,12 @@ export default function ContentStudio({
 							</div>
 							<div className="space-y-2 sm:col-span-2">
 								<Label htmlFor="skills">
-									Skill IDs (phân tách bằng dấu phẩy)
+									Mã kỹ năng liên quan (phân tách bằng dấu phẩy)
 								</Label>
 								<Input
 									id="skills"
 									onChange={(event) => setSkillIds(event.target.value)}
+									placeholder="Để trống nếu chưa gắn kỹ năng"
 									value={skillIds}
 								/>
 							</div>

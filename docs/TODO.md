@@ -24,7 +24,7 @@
 - [ ] Sửa lại UI khoá học của học viên (làm giống coursera)
 - [x] Sidebar chưa đóng vào được
 - [x] Sửa nút ở sidebar + màu padding nhìn cho đẹp
-- [ ] Wording các cái thuật ngữ ở bên trong cho nó dễ hiểu
+- [x] Wording các cái thuật ngữ ở bên trong cho nó dễ hiểu
 - [ ] Đề xuất bước tiếp theo đang không hoạt động
 - [x] Bấm vào tên user -> ra trang thông tin cá nhân
 - [ ] Sửa lại vị trí các tab ở sidebar -> cái gì quan trọng thì để lên trên
