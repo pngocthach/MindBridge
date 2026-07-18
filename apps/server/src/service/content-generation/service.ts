@@ -312,6 +312,7 @@ export class LessonGenerationService implements ContentGenerationPort {
 			yield {
 				contentId,
 				contentVersionId,
+				draft: draft as unknown as Record<string, unknown>,
 				generationId: generation.id,
 				type: "completed",
 			};

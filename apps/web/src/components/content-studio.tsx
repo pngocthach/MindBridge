@@ -9,6 +9,12 @@ import {
 import { Input } from "@MindBridge/ui/components/input";
 import { Label } from "@MindBridge/ui/components/label";
 import { Textarea } from "@MindBridge/ui/components/textarea";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@MindBridge/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -34,13 +40,21 @@ type SourceDocument = {
 	preview: string;
 };
 
+type SourceChunk = {
+	id: string;
+	ordinal: number;
+	pageFrom: number | null;
+	pageTo: number | null;
+	text: string;
+};
+
+const EMPTY_DOCUMENT_ID = "00000000-0000-0000-0000-000000000000";
+
 type CourseOption = {
 	gradeLevel: number;
 	id: string;
 	title: string;
 };
-
-type StudioStep = "preview" | "setup" | "source";
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
 	typeof value === "object" && value !== null
@@ -104,7 +118,13 @@ const getSourceReferenceGroups = (
 	return groups.filter((group) => group.claim || group.referenceIds.length > 0);
 };
 
-function SourceReferenceReview({ draft }: { draft: Record<string, unknown> }) {
+function SourceReferenceReview({
+	draft,
+	sourceChunks,
+}: {
+	draft: Record<string, unknown>;
+	sourceChunks: SourceChunk[];
+}) {
 	const groups = getSourceReferenceGroups(draft);
 	const supportedCount = groups.filter(
 		(group) => group.referenceIds.length > 0,
@@ -112,58 +132,88 @@ function SourceReferenceReview({ draft }: { draft: Record<string, unknown> }) {
 	const uniqueReferenceCount = new Set(
 		groups.flatMap((group) => group.referenceIds),
 	).size;
+	const sourceChunkById = new Map(
+		sourceChunks.map((sourceChunk) => [sourceChunk.id, sourceChunk]),
+	);
 
 	return (
-		<details className="group overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-			<summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4 font-semibold focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/20">
-				<span>Nguồn kiểm chứng</span>
-				<span className="font-medium text-muted-foreground text-xs">
-					{supportedCount}/{groups.length} mục có nguồn · {uniqueReferenceCount}{" "}
-					đoạn được dùng
-				</span>
-			</summary>
-			<div className="border-t px-5 py-4">
-				<p className="mb-3 text-muted-foreground text-xs/relaxed">
-					Đối chiếu từng phần của bản nháp với các đoạn tài liệu nguồn trước khi
-					gửi duyệt.
-				</p>
-				<ul className="space-y-2">
-					{groups.map((group, index) => (
-						<li
-							className="grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-[minmax(7rem,0.25fr)_minmax(0,1fr)]"
-							key={`${group.label}-${index}`}
-						>
-							<div>
-								<p className="font-semibold text-xs">{group.label}</p>
-								<div className="mt-1 flex flex-wrap gap-1">
-									{group.referenceIds.length > 0 ? (
-										group.referenceIds.map((referenceId) => (
-											<span
-												className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-[10px] text-emerald-700"
-												key={referenceId}
-											>
-												{referenceId}
-											</span>
-										))
-									) : (
-										<span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-[10px] text-amber-700">
-											Chưa có nguồn
-										</span>
-									)}
+		<TooltipProvider>
+			<details className="group overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+				<summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4 font-semibold focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/20">
+					<span>Nguồn kiểm chứng</span>
+					<span className="font-medium text-muted-foreground text-xs">
+						{supportedCount}/{groups.length} mục có nguồn ·{" "}
+						{uniqueReferenceCount} đoạn được dùng
+					</span>
+				</summary>
+				<div className="border-t px-5 py-4">
+					<p className="mb-3 text-muted-foreground text-xs/relaxed">
+						Hover hoặc focus vào một nguồn để xem đoạn tài liệu AI đã dùng.
+					</p>
+					<ul className="space-y-2">
+						{groups.map((group, index) => (
+							<li
+								className="grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-[minmax(7rem,0.25fr)_minmax(0,1fr)]"
+								key={`${group.label}-${index}`}
+							>
+								<div>
+									<p className="font-semibold text-xs">{group.label}</p>
+									<div className="mt-1 flex flex-wrap gap-1">
+										{group.referenceIds.map((referenceId) => {
+											const sourceChunk = sourceChunkById.get(referenceId);
+											if (!sourceChunk) {
+												return null;
+											}
+											const sourceLabel = String(sourceChunk.ordinal + 1);
+											const pageLabel =
+												sourceChunk.pageFrom && sourceChunk.pageTo
+													? `Trang ${sourceChunk.pageFrom}–${sourceChunk.pageTo}`
+													: sourceChunk.pageFrom
+														? `Trang ${sourceChunk.pageFrom}`
+														: null;
+											return (
+												<Tooltip key={referenceId}>
+													<TooltipTrigger
+														className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-[10px] text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														render={<button type="button" />}
+													>
+														{sourceLabel}
+													</TooltipTrigger>
+													<TooltipContent className="max-w-md items-start text-left text-xs/relaxed">
+														<div>
+															<p className="font-semibold">
+																Đoạn nguồn {sourceLabel}
+																{pageLabel ? ` · ${pageLabel}` : ""}
+															</p>
+															<p className="mt-1 line-clamp-6">
+																{sourceChunk.text}
+															</p>
+														</div>
+													</TooltipContent>
+												</Tooltip>
+											);
+										})}
+									</div>
 								</div>
-							</div>
-							<p className="line-clamp-3 text-muted-foreground text-xs/relaxed">
-								{group.claim || "Nội dung đang được AI hoàn thiện…"}
-							</p>
-						</li>
-					))}
-				</ul>
-			</div>
-		</details>
+								<p className="line-clamp-3 text-muted-foreground text-xs/relaxed">
+									{group.claim || "Nội dung đang được AI hoàn thiện…"}
+								</p>
+							</li>
+						))}
+					</ul>
+				</div>
+			</details>
+		</TooltipProvider>
 	);
 }
 
-function LessonDraftPreview({ draft }: { draft: Record<string, unknown> }) {
+function LessonDraftPreview({
+	draft,
+	sourceChunks,
+}: {
+	draft: Record<string, unknown>;
+	sourceChunks: SourceChunk[];
+}) {
 	const objectives = asRecords(draft.objectives);
 	const quizQuestions = asRecords(draft.quiz_questions);
 	const exercises = asRecords(draft.exercises);
@@ -206,13 +256,244 @@ function LessonDraftPreview({ draft }: { draft: Record<string, unknown> }) {
 					</div>
 				))}
 			</div>
-			<SourceReferenceReview draft={draft} />
+			<SourceReferenceReview draft={draft} sourceChunks={sourceChunks} />
 		</div>
 	);
 }
 
+type GenerationContent = {
+	referenceIds: string[];
+	text: string;
+};
+
+type GenerationStage = {
+	content: GenerationContent[];
+	description: string;
+	id: string;
+	isReady: boolean;
+	label: string;
+	readyLabel: string;
+};
+
+export function StructuredGenerationProgress({
+	draft,
+	isComplete,
+	sourceChunks = [],
+}: {
+	draft: Record<string, unknown> | null;
+	isComplete: boolean;
+	sourceChunks?: SourceChunk[];
+}) {
+	const objectives = asRecords(draft?.objectives);
+	const quizQuestions = asRecords(draft?.quiz_questions);
+	const exercises = asRecords(draft?.exercises);
+	const sourceChunkById = new Map(
+		sourceChunks.map((sourceChunk) => [sourceChunk.id, sourceChunk]),
+	);
+	const stages: GenerationStage[] = [
+		{
+			content: [
+				{ referenceIds: [], text: asString(draft?.title) },
+				{
+					referenceIds: asStrings(draft?.summary_source_chunk_ids),
+					text: asString(draft?.summary),
+				},
+			].filter((content) => content.text),
+			description: asString(draft?.title)
+				? "Khung bài học đã có tiêu đề và tóm tắt."
+				: "Đang xác định chủ đề và nội dung trọng tâm.",
+			id: "outline",
+			isReady: Boolean(asString(draft?.title) && asString(draft?.summary)),
+			label: "Khung bài học",
+			readyLabel: "Đã tạo khung bài học",
+		},
+		{
+			content: objectives
+				.map((objective) => ({
+					referenceIds: asStrings(objective.source_chunk_ids),
+					text: asString(objective.text),
+				}))
+				.filter((content) => content.text),
+			description:
+				objectives.length > 0
+					? `Đã tạo ${objectives.length} mục tiêu học tập.`
+					: "Đang xác định kết quả học tập.",
+			id: "objectives",
+			isReady: objectives.length > 0,
+			label: "Mục tiêu học tập",
+			readyLabel: `Đã tạo ${objectives.length} mục tiêu`,
+		},
+		{
+			content: quizQuestions
+				.map((question) => {
+					const options = asStrings(question.options).map(
+						(option, optionIndex) =>
+							`${String.fromCharCode(65 + optionIndex)}. ${option}`,
+					);
+					return {
+						referenceIds: asStrings(question.source_chunk_ids),
+						text: [
+							asString(question.question),
+							...options,
+							question.correct_answer
+								? `Đáp án: ${asString(question.correct_answer)}`
+								: "",
+							question.explanation
+								? `Giải thích: ${asString(question.explanation)}`
+								: "",
+						]
+							.filter(Boolean)
+							.join("\n"),
+					};
+				})
+				.filter((content) => content.text),
+			description:
+				quizQuestions.length > 0
+					? `Đã tạo ${quizQuestions.length} câu hỏi kiểm tra.`
+					: "Đang soạn câu hỏi để kiểm tra kiến thức.",
+			id: "quiz",
+			isReady: quizQuestions.length > 0,
+			label: "Câu hỏi kiểm tra",
+			readyLabel: `Đã tạo ${quizQuestions.length} câu hỏi`,
+		},
+		{
+			content: exercises
+				.map((exercise) => ({
+					referenceIds: asStrings(exercise.source_chunk_ids),
+					text: [
+						asString(exercise.prompt),
+						exercise.expected_answer
+							? `Đáp án tham khảo: ${asString(exercise.expected_answer)}`
+							: "",
+						exercise.explanation
+							? `Giải thích: ${asString(exercise.explanation)}`
+							: "",
+					]
+						.filter(Boolean)
+						.join("\n"),
+				}))
+				.filter((content) => content.text),
+			description:
+				exercises.length > 0
+					? `Đã tạo ${exercises.length} bài tập vận dụng.`
+					: "Đang thiết kế bài tập vận dụng.",
+			id: "exercises",
+			isReady: exercises.length > 0,
+			label: "Bài tập vận dụng",
+			readyLabel: `Đã tạo ${exercises.length} bài tập`,
+		},
+	];
+	const activeStageIndex = isComplete
+		? -1
+		: stages.findIndex((stage) => !stage.isReady);
+
+	return (
+		<TooltipProvider>
+			<ol
+				aria-label="Tiến trình tạo bài học"
+				className="grid gap-3 sm:grid-cols-2"
+			>
+				{stages.map((stage, index) => {
+					const isActive = index === activeStageIndex;
+					const isReady = isComplete || stage.isReady;
+					return (
+						<li
+							className={`rounded-xl border p-4 transition ${
+								isReady
+									? "border-emerald-200 bg-emerald-50"
+									: isActive
+										? "border-primary/30 bg-primary/5"
+										: "border-border bg-muted/20"
+							}`}
+							key={stage.id}
+						>
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-2">
+									<span
+										className={`flex size-6 items-center justify-center rounded-full font-bold text-xs ${
+											isReady
+												? "bg-emerald-600 text-white"
+												: isActive
+													? "animate-pulse bg-primary text-primary-foreground"
+													: "bg-muted text-muted-foreground"
+										}`}
+									>
+										{isReady ? "✓" : index + 1}
+									</span>
+									<p className="font-semibold text-sm">{stage.label}</p>
+								</div>
+								<span className="text-muted-foreground text-xs">
+									{isReady
+										? stage.readyLabel
+										: isActive
+											? "Đang tạo"
+											: "Đang chờ"}
+								</span>
+							</div>
+							{stage.content.length > 0 ? (
+								<ul className="mt-3 space-y-1 border-primary/10 border-t pt-3 text-xs/relaxed">
+									{stage.content.map((content, contentIndex) => (
+										<li key={`${stage.id}-${contentIndex}`}>
+											<div className="flex flex-wrap items-start gap-2">
+												<p className="whitespace-pre-line text-foreground">
+													{stage.id === "outline"
+														? content.text
+														: stage.id === "quiz"
+															? `Câu ${contentIndex + 1}. ${content.text}`
+															: stage.id === "exercises"
+																? `Bài tập ${contentIndex + 1}. ${content.text}`
+																: `• ${content.text}`}
+												</p>
+												{stage.id === "quiz" || stage.id === "exercises"
+													? content.referenceIds.map((referenceId) => {
+															const sourceChunk =
+																sourceChunkById.get(referenceId);
+															if (!sourceChunk) {
+																return null;
+															}
+															const sourceLabel = String(
+																sourceChunk.ordinal + 1,
+															);
+															return (
+																<Tooltip key={referenceId}>
+																	<TooltipTrigger
+																		className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-[10px] text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+																		render={<button type="button" />}
+																	>
+																		{sourceLabel}
+																	</TooltipTrigger>
+																	<TooltipContent className="max-w-md items-start text-left text-xs/relaxed">
+																		<div>
+																			<p className="font-semibold">
+																				Đoạn nguồn {sourceLabel}
+																			</p>
+																			<p className="mt-1 line-clamp-6">
+																				{sourceChunk.text}
+																			</p>
+																		</div>
+																	</TooltipContent>
+																</Tooltip>
+															);
+														})
+													: null}
+											</div>
+										</li>
+									))}
+								</ul>
+							) : (
+								<p className="mt-2 text-muted-foreground text-xs/relaxed">
+									{stage.description}
+								</p>
+							)}
+						</li>
+					);
+				})}
+			</ol>
+		</TooltipProvider>
+	);
+}
+
 export default function ContentStudio() {
-	const [activeStep, setActiveStep] = useState<StudioStep>("source");
 	const [courseSearch, setCourseSearch] = useState("");
 	const [isCourseListOpen, setIsCourseListOpen] = useState(false);
 	const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(
@@ -229,6 +510,7 @@ export default function ContentStudio() {
 	const [source, setSource] = useState<SourceDocument | null>(null);
 	const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [isGenerationComplete, setIsGenerationComplete] = useState(false);
 	const [generationStatus, setGenerationStatus] = useState("");
 	const [generationError, setGenerationError] = useState("");
 
@@ -237,7 +519,6 @@ export default function ContentStudio() {
 			onSuccess: (result) => {
 				setSource(result);
 				setSourceError("");
-				setActiveStep("setup");
 			},
 		}),
 	);
@@ -247,7 +528,6 @@ export default function ContentStudio() {
 				if (result.type === "success") {
 					setSource(result);
 					setSourceError("");
-					setActiveStep("setup");
 					return;
 				}
 				setSourceError(result.message);
@@ -259,10 +539,19 @@ export default function ContentStudio() {
 		orpc.courses.search.queryOptions({ input: { query: courseSearch } }),
 	);
 
+	const sourceDetail = useQuery(
+		orpc.sourceDocuments.detail.queryOptions({
+			enabled: Boolean(source && isGenerationComplete),
+			input: { documentId: source?.documentId ?? EMPTY_DOCUMENT_ID },
+		}),
+	);
+
 	const isSavingSource = upload.isPending || paste.isPending;
 	const sourceRequestError =
 		sourceError || upload.error?.message || paste.error?.message;
-	const canGenerate = Boolean(source && selectedCourse && !isGenerating);
+	const canGenerate = Boolean(
+		source && selectedCourse && !isGenerating && !isSavingSource,
+	);
 
 	const createDraft = async (): Promise<void> => {
 		if (!source || !selectedCourse) {
@@ -270,10 +559,10 @@ export default function ContentStudio() {
 		}
 
 		setDraft(null);
+		setIsGenerationComplete(false);
 		setIsGenerating(true);
 		setGenerationError("");
 		setGenerationStatus("Đang kết nối với AI…");
-		setActiveStep("preview");
 		try {
 			let receivedTerminalEvent = false;
 			const stream = await client.contentGeneration.generateLessonDraft({
@@ -294,11 +583,13 @@ export default function ContentStudio() {
 				}
 				if (event.type === "partial") {
 					setDraft(event.draft);
-					setGenerationStatus("Đang hoàn thiện bài học…");
+					setGenerationStatus("Đang cập nhật cấu trúc bài học…");
 				}
 				if (event.type === "completed") {
 					receivedTerminalEvent = true;
+					setDraft(event.draft);
 					setGenerationStatus("Bản nháp đã sẵn sàng để review.");
+					setIsGenerationComplete(true);
 				}
 				if (event.type === "failed") {
 					receivedTerminalEvent = true;
@@ -330,202 +621,161 @@ export default function ContentStudio() {
 						AI authoring workspace
 					</p>
 					<h1 className="mt-1 font-semibold text-2xl" id="studio-title">
-						Content Studio
+						Tạo bài học từ tài liệu
 					</h1>
 				</div>
 				<p className="max-w-xl text-muted-foreground text-sm">
-					Biến tài liệu nguồn thành học liệu có cấu trúc, kiểm chứng nguồn và
-					sẵn sàng cho quy trình review.
+					Tải tài liệu, chọn khóa học và để AI tạo bản nháp. Các thiết lập nâng
+					cao là tùy chọn.
 				</p>
 			</header>
-			<nav
-				aria-label="Các bước tạo học liệu"
-				className="grid gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm sm:grid-cols-3"
-			>
-				{(
-					[
-						{ id: "source", label: "Nguồn học liệu", number: 1 },
-						{ id: "setup", label: "Cấu hình bài học", number: 2 },
-						{ id: "preview", label: "Preview & review", number: 3 },
-					] as const
-				).map((step) => {
-					const isActive = activeStep === step.id;
-					const isDisabled =
-						(step.id === "setup" && !source) ||
-						(step.id === "preview" && !(draft || generationStatus));
-					return (
-						<button
-							aria-current={isActive ? "step" : undefined}
-							className={`flex items-center gap-3 rounded-xl border-0 px-4 py-3 text-left shadow-none transition disabled:opacity-45 ${
-								isActive
-									? "bg-primary text-primary-foreground"
-									: "bg-transparent hover:bg-blue-50"
-							}`}
-							disabled={isDisabled}
-							key={step.id}
-							onClick={() => setActiveStep(step.id)}
-							type="button"
-						>
-							<span
-								className={`flex size-7 shrink-0 items-center justify-center rounded-full font-bold text-xs ${
-									isActive ? "bg-white/15" : "bg-primary/10 text-primary"
-								}`}
-							>
-								{step.number}
-							</span>
-							<span className="font-semibold text-sm">{step.label}</span>
-						</button>
-					);
-				})}
-			</nav>
-			<div className="mx-auto w-full max-w-5xl">
-				<section className="space-y-4" aria-labelledby="source-heading">
-					<Card className={activeStep === "source" ? "" : "hidden"}>
-						<CardHeader>
-							<CardTitle id="source-heading">Nguồn học liệu</CardTitle>
-							<CardDescription>
-								Tải Markdown hoặc PDF có text, hoặc dán nội dung nguồn.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="source-file">Tệp tài liệu</Label>
-								<Input
-									accept=".md,.markdown,.pdf,text/markdown,application/pdf"
-									disabled={isSavingSource}
-									id="source-file"
-									onChange={(event) => {
-										const file = event.target.files?.[0];
-										if (file) upload.mutate({ file });
-									}}
-									type="file"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="pasted-source">Hoặc dán nội dung</Label>
-								<Textarea
-									disabled={isSavingSource}
-									id="pasted-source"
-									onChange={(event) => setPastedText(event.target.value)}
-									placeholder="Dán nội dung Markdown hoặc văn bản đã trích xuất…"
-									value={pastedText}
-								/>
-								<Button
-									disabled={isSavingSource || !pastedText.trim()}
-									onClick={() => paste.mutate({ text: pastedText })}
-									type="button"
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Bắt đầu với tài liệu của bạn</CardTitle>
+					<CardDescription>
+						Chỉ cần hoàn thành hai trường bên dưới để tạo bài học.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-5">
+					<div className="grid gap-5 md:grid-cols-2">
+						<div className="space-y-2">
+							<Label htmlFor="source-file">
+								1. Tài liệu nguồn{" "}
+								<span aria-hidden="true" className="text-destructive">
+									*
+								</span>
+								<span className="sr-only"> bắt buộc</span>
+							</Label>
+							<Input
+								accept=".md,.markdown,.pdf,text/markdown,application/pdf"
+								disabled={isSavingSource}
+								id="source-file"
+								onChange={(event) => {
+									const file = event.target.files?.[0];
+									if (file) {
+										upload.mutate({ file });
+									}
+								}}
+								type="file"
+							/>
+							<p className="text-muted-foreground text-xs">
+								Chấp nhận Markdown hoặc PDF có thể trích xuất văn bản.
+							</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="course-search">
+								2. Khóa học nhận bài học{" "}
+								<span aria-hidden="true" className="text-destructive">
+									*
+								</span>
+								<span className="sr-only"> bắt buộc</span>
+							</Label>
+							<Input
+								aria-autocomplete="list"
+								aria-controls="course-options"
+								aria-expanded={isCourseListOpen}
+								autoComplete="off"
+								disabled={isGenerating}
+								id="course-search"
+								onChange={(event) => {
+									setCourseSearch(event.target.value);
+									setSelectedCourse(null);
+									setIsCourseListOpen(true);
+								}}
+								onFocus={() => setIsCourseListOpen(true)}
+								placeholder="Tìm và chọn khóa học…"
+								role="combobox"
+								value={selectedCourse?.title ?? courseSearch}
+							/>
+							{isCourseListOpen && (
+								<div
+									className="max-h-52 overflow-auto rounded-md border bg-background"
+									id="course-options"
+									role="listbox"
 								>
-									Dùng nội dung đã dán
-								</Button>
-							</div>
-							{sourceRequestError && (
-								<p className="text-destructive text-sm" role="alert">
-									{sourceRequestError}
-								</p>
-							)}
-							{source && (
-								<div className="rounded-md border bg-muted/40 p-3 text-sm">
-									<p className="font-medium">
-										Đã trích xuất {source.chunkCount} đoạn nguồn
-									</p>
-									<p className="mt-2 whitespace-pre-wrap text-muted-foreground">
-										{source.preview}
-									</p>
+									{courses.isPending && (
+										<p
+											className="p-3 text-muted-foreground text-sm"
+											role="status"
+										>
+											Đang tải khóa học…
+										</p>
+									)}
+									{courses.isError && (
+										<div
+											className="flex items-center justify-between gap-2 p-3 text-destructive text-sm"
+											role="alert"
+										>
+											<span>Không thể tải danh sách khóa học.</span>
+											<Button
+												onClick={() => void courses.refetch()}
+												size="sm"
+												type="button"
+												variant="outline"
+											>
+												Thử lại
+											</Button>
+										</div>
+									)}
+									{courses.data?.map((course) => (
+										<button
+											aria-selected={selectedCourse?.id === course.id}
+											className="flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent"
+											key={course.id}
+											onClick={() => {
+												setCourseSearch(course.title);
+												setGradeLevel(String(course.gradeLevel));
+												setIsCourseListOpen(false);
+												setSelectedCourse(course);
+											}}
+											role="option"
+											type="button"
+										>
+											<span className="font-medium">{course.title}</span>
+											<span className="text-muted-foreground">
+												Khối {course.gradeLevel}
+											</span>
+										</button>
+									))}
+									{courses.data?.length === 0 && !courses.isPending && (
+										<p className="p-3 text-muted-foreground text-sm">
+											Không tìm thấy khóa học phù hợp.
+										</p>
+									)}
 								</div>
 							)}
-						</CardContent>
-					</Card>
+							{selectedCourse && (
+								<p className="text-muted-foreground text-xs">
+									Đã chọn: {selectedCourse.title} · Khối{" "}
+									{selectedCourse.gradeLevel}
+								</p>
+							)}
+						</div>
+					</div>
 
-					<Card className={activeStep === "setup" ? "" : "hidden"}>
-						<CardHeader>
-							<CardTitle>Metadata</CardTitle>
-							<CardDescription>
-								Được lưu cùng bản nháp để phục vụ gợi ý sau này.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="grid gap-4 sm:grid-cols-2">
-							<div className="space-y-2 sm:col-span-2">
-								<Label htmlFor="course-search">Khóa học</Label>
-								<Input
-									aria-autocomplete="list"
-									aria-controls="course-options"
-									aria-expanded={isCourseListOpen}
-									autoComplete="off"
-									id="course-search"
-									onChange={(event) => {
-										setCourseSearch(event.target.value);
-										setSelectedCourse(null);
-										setIsCourseListOpen(true);
-									}}
-									onFocus={() => setIsCourseListOpen(true)}
-									placeholder="Tìm theo tên khóa học…"
-									role="combobox"
-									value={selectedCourse?.title ?? courseSearch}
-								/>
-								{selectedCourse && (
-									<p className="text-muted-foreground text-sm">
-										Đã chọn: {selectedCourse.title} · Khối{" "}
-										{selectedCourse.gradeLevel}
-									</p>
-								)}
-								{isCourseListOpen && (
-									<div
-										className="max-h-52 overflow-auto rounded-md border bg-background"
-										id="course-options"
-										role="listbox"
-									>
-										{courses.isPending && (
-											<p
-												className="p-3 text-muted-foreground text-sm"
-												role="status"
-											>
-												Đang tải khóa học…
-											</p>
-										)}
-										{courses.isError && (
-											<div
-												className="flex items-center justify-between gap-2 p-3 text-destructive text-sm"
-												role="alert"
-											>
-												<span>Không thể tải danh sách khóa học.</span>
-												<Button
-													onClick={() => void courses.refetch()}
-													size="sm"
-													type="button"
-													variant="outline"
-												>
-													Thử lại
-												</Button>
-											</div>
-										)}
-										{courses.data?.map((course) => (
-											<button
-												className="flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent"
-												key={course.id}
-												onClick={() => {
-													setCourseSearch(course.title);
-													setGradeLevel(String(course.gradeLevel));
-													setIsCourseListOpen(false);
-													setSelectedCourse(course);
-												}}
-												aria-selected={selectedCourse?.id === course.id}
-												role="option"
-												type="button"
-											>
-												<span className="font-medium">{course.title}</span>
-												<span className="text-muted-foreground">
-													Khối {course.gradeLevel}
-												</span>
-											</button>
-										))}
-										{courses.data?.length === 0 && !courses.isPending && (
-											<p className="p-3 text-muted-foreground text-sm">
-												Không tìm thấy khóa học phù hợp.
-											</p>
-										)}
-									</div>
-								)}
-							</div>
+					{sourceRequestError && (
+						<p className="text-destructive text-sm" role="alert">
+							{sourceRequestError}
+						</p>
+					)}
+					{source && (
+						<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+							<p className="font-medium text-emerald-800">
+								Tài liệu đã sẵn sàng · {source.chunkCount} đoạn nguồn đã trích
+								xuất
+							</p>
+							<p className="mt-1 line-clamp-2 whitespace-pre-wrap text-emerald-700">
+								{source.preview}
+							</p>
+						</div>
+					)}
+
+					<details className="rounded-xl border px-4 py-3">
+						<summary className="cursor-pointer font-medium text-sm">
+							Tùy chỉnh bài học (không bắt buộc)
+						</summary>
+						<div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
 							<div className="space-y-2">
 								<Label htmlFor="grade">Khối lớp</Label>
 								<Input
@@ -584,79 +834,100 @@ export default function ContentStudio() {
 									value={skillIds}
 								/>
 							</div>
-							<div className="flex flex-wrap justify-between gap-3 border-t pt-4 sm:col-span-2">
+							<div className="space-y-2 sm:col-span-2">
+								<Label htmlFor="pasted-source">Hoặc dán nội dung</Label>
+								<Textarea
+									disabled={isSavingSource}
+									id="pasted-source"
+									onChange={(event) => setPastedText(event.target.value)}
+									placeholder="Dán nội dung Markdown hoặc văn bản đã trích xuất…"
+									value={pastedText}
+								/>
 								<Button
-									onClick={() => setActiveStep("source")}
+									disabled={isSavingSource || !pastedText.trim()}
+									onClick={() => paste.mutate({ text: pastedText })}
 									type="button"
 									variant="outline"
 								>
-									Quay lại
-								</Button>
-								<Button
-									disabled={!canGenerate}
-									onClick={createDraft}
-									type="button"
-								>
-									{isGenerating ? "Đang tạo bản nháp…" : "Tạo bản nháp với AI"}
+									Dùng nội dung đã dán
 								</Button>
 							</div>
-						</CardContent>
-					</Card>
-				</section>
+						</div>
+					</details>
 
-				<section
-					aria-labelledby="draft-heading"
-					className={activeStep === "preview" ? "" : "hidden"}
-				>
-					<Card aria-busy={isGenerating} className="min-h-[28rem]">
+					<Button
+						className="w-full sm:w-auto"
+						disabled={!canGenerate}
+						onClick={createDraft}
+						type="button"
+					>
+						{isGenerating ? "Đang tạo bản nháp…" : "Tạo bài học với AI"}
+					</Button>
+					{!canGenerate && !isGenerating && (
+						<p className="text-muted-foreground text-sm">
+							{source
+								? "Chọn khóa học để tạo bài học."
+								: "Tải tài liệu để tiếp tục."}
+						</p>
+					)}
+				</CardContent>
+			</Card>
+
+			{(isGenerating || generationStatus || generationError || draft) && (
+				<section aria-labelledby="draft-heading">
+					<Card aria-busy={isGenerating} className="min-h-[20rem]">
 						<CardHeader>
-							<CardTitle id="draft-heading">Bản nháp AI</CardTitle>
+							<CardTitle id="draft-heading">
+								{isGenerationComplete
+									? "Bản nháp AI"
+									: "AI đang xây dựng bài học"}
+							</CardTitle>
 							<CardDescription>
-								AI chỉ tạo Draft; nội dung chưa được xuất bản cho học viên.
+								AI tạo từng phần của bài học theo cấu trúc trước khi lưu bản
+								nháp.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<div className="flex flex-wrap gap-2">
-								<Button
-									onClick={() => setActiveStep("setup")}
-									type="button"
-									variant="outline"
-								>
-									Điều chỉnh cấu hình
-								</Button>
-								<Button
-									disabled={!canGenerate}
-									onClick={createDraft}
-									type="button"
-								>
-									{isGenerating
-										? "Đang tạo bản nháp…"
-										: generationError
-											? "Thử tạo lại"
-											: "Tạo lại bản nháp"}
-								</Button>
-							</div>
 							{generationStatus && (
 								<p aria-live="polite" className="text-sm text-muted-foreground">
 									{generationStatus}
 								</p>
 							)}
 							{generationError && (
-								<p className="text-destructive text-sm" role="alert">
-									{generationError}
-								</p>
+								<div className="space-y-3">
+									<p className="text-destructive text-sm" role="alert">
+										{generationError}
+									</p>
+									<Button
+										disabled={!canGenerate}
+										onClick={createDraft}
+										type="button"
+									>
+										Thử tạo lại
+									</Button>
+								</div>
 							)}
-							{draft ? (
-								<LessonDraftPreview draft={draft} />
-							) : (
+							{!generationError && (
+								<StructuredGenerationProgress
+									draft={draft}
+									isComplete={isGenerationComplete}
+									sourceChunks={sourceDetail.data?.chunks ?? []}
+								/>
+							)}
+							{isGenerationComplete && draft ? (
+								<LessonDraftPreview
+									draft={draft}
+									sourceChunks={sourceDetail.data?.chunks ?? []}
+								/>
+							) : !generationError ? (
 								<p className="text-muted-foreground text-sm">
-									Bản nháp có cấu trúc sẽ xuất hiện trong khi AI tạo bài học.
+									Bản xem trước sẽ mở khi AI hoàn tất cấu trúc bài học.
 								</p>
-							)}
+							) : null}
 						</CardContent>
 					</Card>
 				</section>
-			</div>
+			)}
 		</section>
 	);
 }

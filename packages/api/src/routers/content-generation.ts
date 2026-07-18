@@ -24,6 +24,7 @@ const generationEvent = z.discriminatedUnion("type", [
 	z.object({
 		contentId: z.string().uuid(),
 		contentVersionId: z.string().uuid(),
+		draft: z.record(z.string(), z.unknown()),
 		generationId: z.string().uuid(),
 		type: z.literal("completed"),
 	}),
