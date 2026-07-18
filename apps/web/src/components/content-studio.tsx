@@ -40,8 +40,6 @@ type CourseOption = {
 	title: string;
 };
 
-type StudioStep = "preview" | "setup" | "source";
-
 const asRecord = (value: unknown): Record<string, unknown> | null =>
 	typeof value === "object" && value !== null
 		? (value as Record<string, unknown>)
@@ -212,7 +210,6 @@ function LessonDraftPreview({ draft }: { draft: Record<string, unknown> }) {
 }
 
 export default function ContentStudio() {
-	const [activeStep, setActiveStep] = useState<StudioStep>("source");
 	const [courseSearch, setCourseSearch] = useState("");
 	const [isCourseListOpen, setIsCourseListOpen] = useState(false);
 	const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(
@@ -237,7 +234,6 @@ export default function ContentStudio() {
 			onSuccess: (result) => {
 				setSource(result);
 				setSourceError("");
-				setActiveStep("setup");
 			},
 		}),
 	);
@@ -247,7 +243,6 @@ export default function ContentStudio() {
 				if (result.type === "success") {
 					setSource(result);
 					setSourceError("");
-					setActiveStep("setup");
 					return;
 				}
 				setSourceError(result.message);
@@ -262,7 +257,9 @@ export default function ContentStudio() {
 	const isSavingSource = upload.isPending || paste.isPending;
 	const sourceRequestError =
 		sourceError || upload.error?.message || paste.error?.message;
-	const canGenerate = Boolean(source && selectedCourse && !isGenerating);
+	const canGenerate = Boolean(
+		source && selectedCourse && !isGenerating && !isSavingSource,
+	);
 
 	const createDraft = async (): Promise<void> => {
 		if (!source || !selectedCourse) {
@@ -273,7 +270,6 @@ export default function ContentStudio() {
 		setIsGenerating(true);
 		setGenerationError("");
 		setGenerationStatus("Đang kết nối với AI…");
-		setActiveStep("preview");
 		try {
 			let receivedTerminalEvent = false;
 			const stream = await client.contentGeneration.generateLessonDraft({
@@ -330,202 +326,149 @@ export default function ContentStudio() {
 						AI authoring workspace
 					</p>
 					<h1 className="mt-1 font-semibold text-2xl" id="studio-title">
-						Content Studio
+						Tạo bài học từ tài liệu
 					</h1>
 				</div>
 				<p className="max-w-xl text-muted-foreground text-sm">
-					Biến tài liệu nguồn thành học liệu có cấu trúc, kiểm chứng nguồn và
-					sẵn sàng cho quy trình review.
+					Tải tài liệu, chọn khóa học và để AI tạo bản nháp. Các thiết lập nâng
+					cao là tùy chọn.
 				</p>
 			</header>
-			<nav
-				aria-label="Các bước tạo học liệu"
-				className="grid gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm sm:grid-cols-3"
-			>
-				{(
-					[
-						{ id: "source", label: "Nguồn học liệu", number: 1 },
-						{ id: "setup", label: "Cấu hình bài học", number: 2 },
-						{ id: "preview", label: "Preview & review", number: 3 },
-					] as const
-				).map((step) => {
-					const isActive = activeStep === step.id;
-					const isDisabled =
-						(step.id === "setup" && !source) ||
-						(step.id === "preview" && !(draft || generationStatus));
-					return (
-						<button
-							aria-current={isActive ? "step" : undefined}
-							className={`flex items-center gap-3 rounded-xl border-0 px-4 py-3 text-left shadow-none transition disabled:opacity-45 ${
-								isActive
-									? "bg-primary text-primary-foreground"
-									: "bg-transparent hover:bg-blue-50"
-							}`}
-							disabled={isDisabled}
-							key={step.id}
-							onClick={() => setActiveStep(step.id)}
-							type="button"
-						>
-							<span
-								className={`flex size-7 shrink-0 items-center justify-center rounded-full font-bold text-xs ${
-									isActive ? "bg-white/15" : "bg-primary/10 text-primary"
-								}`}
-							>
-								{step.number}
-							</span>
-							<span className="font-semibold text-sm">{step.label}</span>
-						</button>
-					);
-				})}
-			</nav>
-			<div className="mx-auto w-full max-w-5xl">
-				<section className="space-y-4" aria-labelledby="source-heading">
-					<Card className={activeStep === "source" ? "" : "hidden"}>
-						<CardHeader>
-							<CardTitle id="source-heading">Nguồn học liệu</CardTitle>
-							<CardDescription>
-								Tải Markdown hoặc PDF có text, hoặc dán nội dung nguồn.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="source-file">Tệp tài liệu</Label>
-								<Input
-									accept=".md,.markdown,.pdf,text/markdown,application/pdf"
-									disabled={isSavingSource}
-									id="source-file"
-									onChange={(event) => {
-										const file = event.target.files?.[0];
-										if (file) upload.mutate({ file });
-									}}
-									type="file"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="pasted-source">Hoặc dán nội dung</Label>
-								<Textarea
-									disabled={isSavingSource}
-									id="pasted-source"
-									onChange={(event) => setPastedText(event.target.value)}
-									placeholder="Dán nội dung Markdown hoặc văn bản đã trích xuất…"
-									value={pastedText}
-								/>
-								<Button
-									disabled={isSavingSource || !pastedText.trim()}
-									onClick={() => paste.mutate({ text: pastedText })}
-									type="button"
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Bắt đầu với tài liệu của bạn</CardTitle>
+					<CardDescription>
+						Chỉ cần hoàn thành hai trường bên dưới để tạo bài học.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-5">
+					<div className="grid gap-5 md:grid-cols-2">
+						<div className="space-y-2">
+							<Label htmlFor="source-file">1. Tài liệu nguồn</Label>
+							<Input
+								accept=".md,.markdown,.pdf,text/markdown,application/pdf"
+								disabled={isSavingSource}
+								id="source-file"
+								onChange={(event) => {
+									const file = event.target.files?.[0];
+									if (file) {
+										upload.mutate({ file });
+									}
+								}}
+								type="file"
+							/>
+							<p className="text-muted-foreground text-xs">
+								Chấp nhận Markdown hoặc PDF có thể trích xuất văn bản.
+							</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="course-search">2. Khóa học nhận bài học</Label>
+							<Input
+								aria-autocomplete="list"
+								aria-controls="course-options"
+								aria-expanded={isCourseListOpen}
+								autoComplete="off"
+								disabled={isGenerating}
+								id="course-search"
+								onChange={(event) => {
+									setCourseSearch(event.target.value);
+									setSelectedCourse(null);
+									setIsCourseListOpen(true);
+								}}
+								onFocus={() => setIsCourseListOpen(true)}
+								placeholder="Tìm và chọn khóa học…"
+								role="combobox"
+								value={selectedCourse?.title ?? courseSearch}
+							/>
+							{isCourseListOpen && (
+								<div
+									className="max-h-52 overflow-auto rounded-md border bg-background"
+									id="course-options"
+									role="listbox"
 								>
-									Dùng nội dung đã dán
-								</Button>
-							</div>
-							{sourceRequestError && (
-								<p className="text-destructive text-sm" role="alert">
-									{sourceRequestError}
-								</p>
-							)}
-							{source && (
-								<div className="rounded-md border bg-muted/40 p-3 text-sm">
-									<p className="font-medium">
-										Đã trích xuất {source.chunkCount} đoạn nguồn
-									</p>
-									<p className="mt-2 whitespace-pre-wrap text-muted-foreground">
-										{source.preview}
-									</p>
+									{courses.isPending && (
+										<p
+											className="p-3 text-muted-foreground text-sm"
+											role="status"
+										>
+											Đang tải khóa học…
+										</p>
+									)}
+									{courses.isError && (
+										<div
+											className="flex items-center justify-between gap-2 p-3 text-destructive text-sm"
+											role="alert"
+										>
+											<span>Không thể tải danh sách khóa học.</span>
+											<Button
+												onClick={() => void courses.refetch()}
+												size="sm"
+												type="button"
+												variant="outline"
+											>
+												Thử lại
+											</Button>
+										</div>
+									)}
+									{courses.data?.map((course) => (
+										<button
+											aria-selected={selectedCourse?.id === course.id}
+											className="flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent"
+											key={course.id}
+											onClick={() => {
+												setCourseSearch(course.title);
+												setGradeLevel(String(course.gradeLevel));
+												setIsCourseListOpen(false);
+												setSelectedCourse(course);
+											}}
+											role="option"
+											type="button"
+										>
+											<span className="font-medium">{course.title}</span>
+											<span className="text-muted-foreground">
+												Khối {course.gradeLevel}
+											</span>
+										</button>
+									))}
+									{courses.data?.length === 0 && !courses.isPending && (
+										<p className="p-3 text-muted-foreground text-sm">
+											Không tìm thấy khóa học phù hợp.
+										</p>
+									)}
 								</div>
 							)}
-						</CardContent>
-					</Card>
+							{selectedCourse && (
+								<p className="text-muted-foreground text-xs">
+									Đã chọn: {selectedCourse.title} · Khối{" "}
+									{selectedCourse.gradeLevel}
+								</p>
+							)}
+						</div>
+					</div>
 
-					<Card className={activeStep === "setup" ? "" : "hidden"}>
-						<CardHeader>
-							<CardTitle>Metadata</CardTitle>
-							<CardDescription>
-								Được lưu cùng bản nháp để phục vụ gợi ý sau này.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="grid gap-4 sm:grid-cols-2">
-							<div className="space-y-2 sm:col-span-2">
-								<Label htmlFor="course-search">Khóa học</Label>
-								<Input
-									aria-autocomplete="list"
-									aria-controls="course-options"
-									aria-expanded={isCourseListOpen}
-									autoComplete="off"
-									id="course-search"
-									onChange={(event) => {
-										setCourseSearch(event.target.value);
-										setSelectedCourse(null);
-										setIsCourseListOpen(true);
-									}}
-									onFocus={() => setIsCourseListOpen(true)}
-									placeholder="Tìm theo tên khóa học…"
-									role="combobox"
-									value={selectedCourse?.title ?? courseSearch}
-								/>
-								{selectedCourse && (
-									<p className="text-muted-foreground text-sm">
-										Đã chọn: {selectedCourse.title} · Khối{" "}
-										{selectedCourse.gradeLevel}
-									</p>
-								)}
-								{isCourseListOpen && (
-									<div
-										className="max-h-52 overflow-auto rounded-md border bg-background"
-										id="course-options"
-										role="listbox"
-									>
-										{courses.isPending && (
-											<p
-												className="p-3 text-muted-foreground text-sm"
-												role="status"
-											>
-												Đang tải khóa học…
-											</p>
-										)}
-										{courses.isError && (
-											<div
-												className="flex items-center justify-between gap-2 p-3 text-destructive text-sm"
-												role="alert"
-											>
-												<span>Không thể tải danh sách khóa học.</span>
-												<Button
-													onClick={() => void courses.refetch()}
-													size="sm"
-													type="button"
-													variant="outline"
-												>
-													Thử lại
-												</Button>
-											</div>
-										)}
-										{courses.data?.map((course) => (
-											<button
-												className="flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent"
-												key={course.id}
-												onClick={() => {
-													setCourseSearch(course.title);
-													setGradeLevel(String(course.gradeLevel));
-													setIsCourseListOpen(false);
-													setSelectedCourse(course);
-												}}
-												aria-selected={selectedCourse?.id === course.id}
-												role="option"
-												type="button"
-											>
-												<span className="font-medium">{course.title}</span>
-												<span className="text-muted-foreground">
-													Khối {course.gradeLevel}
-												</span>
-											</button>
-										))}
-										{courses.data?.length === 0 && !courses.isPending && (
-											<p className="p-3 text-muted-foreground text-sm">
-												Không tìm thấy khóa học phù hợp.
-											</p>
-										)}
-									</div>
-								)}
-							</div>
+					{sourceRequestError && (
+						<p className="text-destructive text-sm" role="alert">
+							{sourceRequestError}
+						</p>
+					)}
+					{source && (
+						<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+							<p className="font-medium text-emerald-800">
+								Tài liệu đã sẵn sàng · {source.chunkCount} đoạn nguồn đã trích
+								xuất
+							</p>
+							<p className="mt-1 line-clamp-2 whitespace-pre-wrap text-emerald-700">
+								{source.preview}
+							</p>
+						</div>
+					)}
+
+					<details className="rounded-xl border px-4 py-3">
+						<summary className="cursor-pointer font-medium text-sm">
+							Tùy chỉnh bài học (không bắt buộc)
+						</summary>
+						<div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
 							<div className="space-y-2">
 								<Label htmlFor="grade">Khối lớp</Label>
 								<Input
@@ -584,31 +527,48 @@ export default function ContentStudio() {
 									value={skillIds}
 								/>
 							</div>
-							<div className="flex flex-wrap justify-between gap-3 border-t pt-4 sm:col-span-2">
+							<div className="space-y-2 sm:col-span-2">
+								<Label htmlFor="pasted-source">Hoặc dán nội dung</Label>
+								<Textarea
+									disabled={isSavingSource}
+									id="pasted-source"
+									onChange={(event) => setPastedText(event.target.value)}
+									placeholder="Dán nội dung Markdown hoặc văn bản đã trích xuất…"
+									value={pastedText}
+								/>
 								<Button
-									onClick={() => setActiveStep("source")}
+									disabled={isSavingSource || !pastedText.trim()}
+									onClick={() => paste.mutate({ text: pastedText })}
 									type="button"
 									variant="outline"
 								>
-									Quay lại
-								</Button>
-								<Button
-									disabled={!canGenerate}
-									onClick={createDraft}
-									type="button"
-								>
-									{isGenerating ? "Đang tạo bản nháp…" : "Tạo bản nháp với AI"}
+									Dùng nội dung đã dán
 								</Button>
 							</div>
-						</CardContent>
-					</Card>
-				</section>
+						</div>
+					</details>
 
-				<section
-					aria-labelledby="draft-heading"
-					className={activeStep === "preview" ? "" : "hidden"}
-				>
-					<Card aria-busy={isGenerating} className="min-h-[28rem]">
+					<Button
+						className="w-full sm:w-auto"
+						disabled={!canGenerate}
+						onClick={createDraft}
+						type="button"
+					>
+						{isGenerating ? "Đang tạo bản nháp…" : "Tạo bài học với AI"}
+					</Button>
+					{!canGenerate && !isGenerating && (
+						<p className="text-muted-foreground text-sm">
+							{source
+								? "Chọn khóa học để tạo bài học."
+								: "Tải tài liệu để tiếp tục."}
+						</p>
+					)}
+				</CardContent>
+			</Card>
+
+			{(isGenerating || generationStatus || generationError || draft) && (
+				<section aria-labelledby="draft-heading">
+					<Card aria-busy={isGenerating} className="min-h-[20rem]">
 						<CardHeader>
 							<CardTitle id="draft-heading">Bản nháp AI</CardTitle>
 							<CardDescription>
@@ -616,47 +576,36 @@ export default function ContentStudio() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<div className="flex flex-wrap gap-2">
-								<Button
-									onClick={() => setActiveStep("setup")}
-									type="button"
-									variant="outline"
-								>
-									Điều chỉnh cấu hình
-								</Button>
-								<Button
-									disabled={!canGenerate}
-									onClick={createDraft}
-									type="button"
-								>
-									{isGenerating
-										? "Đang tạo bản nháp…"
-										: generationError
-											? "Thử tạo lại"
-											: "Tạo lại bản nháp"}
-								</Button>
-							</div>
 							{generationStatus && (
 								<p aria-live="polite" className="text-sm text-muted-foreground">
 									{generationStatus}
 								</p>
 							)}
 							{generationError && (
-								<p className="text-destructive text-sm" role="alert">
-									{generationError}
-								</p>
+								<div className="space-y-3">
+									<p className="text-destructive text-sm" role="alert">
+										{generationError}
+									</p>
+									<Button
+										disabled={!canGenerate}
+										onClick={createDraft}
+										type="button"
+									>
+										Thử tạo lại
+									</Button>
+								</div>
 							)}
 							{draft ? (
 								<LessonDraftPreview draft={draft} />
-							) : (
+							) : !generationError ? (
 								<p className="text-muted-foreground text-sm">
 									Bản nháp có cấu trúc sẽ xuất hiện trong khi AI tạo bài học.
 								</p>
-							)}
+							) : null}
 						</CardContent>
 					</Card>
 				</section>
-			</div>
+			)}
 		</section>
 	);
 }
