@@ -16,12 +16,13 @@ import { Input } from "@MindBridge/ui/components/input";
 import { Label } from "@MindBridge/ui/components/label";
 import { Textarea } from "@MindBridge/ui/components/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
 import { orpc } from "@/utils/orpc";
+import ConfirmActionDialog from "./confirm-action-dialog";
 
 type Course = Awaited<ReturnType<typeof orpc.courses.list.call>>[number];
 type CurriculumItem = Awaited<
@@ -51,8 +52,10 @@ const courseToForm = (course: Course): CourseFormValues => ({
 
 export default function CourseCurriculumManager() {
 	const queryClient = useQueryClient();
+	const [courseSearch, setCourseSearch] = useState("");
 	const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 	const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+	const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
 	const [courseForm, setCourseForm] =
 		useState<CourseFormValues>(emptyCourseForm);
 	const [availableContentId, setAvailableContentId] = useState("");
@@ -190,30 +193,65 @@ export default function CourseCurriculumManager() {
 	};
 
 	const isSavingCourse = createCourse.isPending || updateCourse.isPending;
+	const normalizedCourseSearch = courseSearch.trim().toLowerCase();
+	const filteredCourses = (courses.data ?? []).filter((course) =>
+		course.title.toLowerCase().includes(normalizedCourseSearch),
+	);
 
 	return (
-		<section aria-labelledby="course-manager-title" className="space-y-6">
-			<header>
-				<h1 className="font-semibold text-2xl" id="course-manager-title">
-					Khóa học và chương trình
-				</h1>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Tạo khóa học và sắp xếp học liệu đã xuất bản.
-				</p>
+		<section
+			aria-labelledby="course-manager-title"
+			className="space-y-5 rounded-2xl bg-gradient-to-br from-blue-50/70 to-white p-5 md:p-6"
+		>
+			<header className="flex flex-wrap items-center justify-between gap-4">
+				<div>
+					<h1 className="font-semibold text-2xl" id="course-manager-title">
+						Khóa học và chương trình
+					</h1>
+					<p className="mt-1 text-muted-foreground text-sm">
+						Tạo khóa học và sắp xếp học liệu đã xuất bản.
+					</p>
+				</div>
+				<div className="rounded-xl border border-blue-100 bg-white px-4 py-2 text-right shadow-sm">
+					<p className="font-bold text-primary text-xl">
+						{courses.data?.length ?? 0}
+					</p>
+					<p className="text-muted-foreground text-[11px]">
+						khóa học hoạt động
+					</p>
+				</div>
 			</header>
 
-			<div className="grid gap-6 lg:grid-cols-[minmax(16rem,0.7fr)_minmax(0,1.3fr)]">
+			<div className="grid items-start gap-5 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)]">
 				<Card>
 					<CardHeader>
 						<CardTitle>Khóa học</CardTitle>
 						<CardDescription>Chọn một khóa học để quản lý.</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-3">
+						<Input
+							aria-label="Tìm khóa học"
+							onChange={(event) => setCourseSearch(event.target.value)}
+							placeholder="Tìm khóa học…"
+							value={courseSearch}
+						/>
 						{courses.isPending ? <Loader /> : null}
 						{courses.isError ? (
-							<p className="text-destructive text-sm" role="alert">
-								Không thể tải danh sách khóa học.
-							</p>
+							<div
+								className="flex items-center justify-between gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm"
+								role="alert"
+							>
+								<span>Không thể tải danh sách khóa học.</span>
+								<Button
+									onClick={() => void courses.refetch()}
+									size="sm"
+									type="button"
+									variant="outline"
+								>
+									<RefreshCw aria-hidden="true" />
+									Thử lại
+								</Button>
+							</div>
 						) : null}
 						{courses.data?.length === 0 ? (
 							<Empty>
@@ -225,10 +263,10 @@ export default function CourseCurriculumManager() {
 								</EmptyHeader>
 							</Empty>
 						) : null}
-						{courses.data?.map((course) => (
+						{filteredCourses.map((course) => (
 							<button
 								aria-pressed={selectedCourseId === course.id}
-								className="w-full rounded-md border p-3 text-left hover:bg-accent aria-pressed:border-primary aria-pressed:bg-accent"
+								className="w-full rounded-xl border bg-white p-3.5 text-left shadow-sm hover:border-primary/40 hover:bg-blue-50 aria-pressed:border-primary aria-pressed:bg-blue-50 aria-pressed:ring-2 aria-pressed:ring-primary/15"
 								key={course.id}
 								onClick={() => {
 									setSelectedCourseId(course.id);
@@ -244,6 +282,11 @@ export default function CourseCurriculumManager() {
 								</span>
 							</button>
 						))}
+						{normalizedCourseSearch && filteredCourses.length === 0 ? (
+							<p className="rounded-xl border border-dashed p-4 text-center text-muted-foreground text-sm">
+								Không tìm thấy khóa học phù hợp.
+							</p>
+						) : null}
 					</CardContent>
 				</Card>
 
@@ -361,11 +404,7 @@ export default function CourseCurriculumManager() {
 								</Button>
 								<Button
 									disabled={archiveCourse.isPending}
-									onClick={() => {
-										if (window.confirm("Lưu trữ khóa học này?")) {
-											archiveCourse.mutate({ courseId: selectedCourse.id });
-										}
-									}}
+									onClick={() => setIsArchiveDialogOpen(true)}
 									type="button"
 									variant="destructive"
 								>
@@ -413,8 +452,32 @@ export default function CourseCurriculumManager() {
 							<Loader />
 						) : null}
 						{curriculum.isError || availableContent.isError ? (
-							<p className="text-destructive text-sm" role="alert">
-								Không thể tải chương trình khóa học.
+							<div
+								className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm"
+								role="alert"
+							>
+								<span>Không thể tải chương trình khóa học.</span>
+								<Button
+									onClick={() => {
+										void Promise.all([
+											curriculum.refetch(),
+											availableContent.refetch(),
+										]);
+									}}
+									size="sm"
+									type="button"
+									variant="outline"
+								>
+									<RefreshCw aria-hidden="true" />
+									Thử lại
+								</Button>
+							</div>
+						) : null}
+						{availableContent.data?.length === 0 &&
+						curriculum.data &&
+						curriculum.data.length > 0 ? (
+							<p className="rounded-xl border border-dashed p-3 text-muted-foreground text-sm">
+								Mọi học liệu đã xuất bản đều đã có trong chương trình này.
 							</p>
 						) : null}
 						{curriculum.data?.length === 0 ? (
@@ -448,6 +511,22 @@ export default function CourseCurriculumManager() {
 					</CardContent>
 				</Card>
 			) : null}
+			<ConfirmActionDialog
+				confirmLabel="Lưu trữ khóa học"
+				description="Khóa học sẽ không còn xuất hiện trong danh sách hoạt động. Dữ liệu chương trình vẫn được giữ lại."
+				isPending={archiveCourse.isPending}
+				onCancel={() => setIsArchiveDialogOpen(false)}
+				onConfirm={() => {
+					if (selectedCourse) {
+						archiveCourse.mutate(
+							{ courseId: selectedCourse.id },
+							{ onSuccess: () => setIsArchiveDialogOpen(false) },
+						);
+					}
+				}}
+				open={isArchiveDialogOpen}
+				title="Lưu trữ khóa học?"
+			/>
 		</section>
 	);
 }
