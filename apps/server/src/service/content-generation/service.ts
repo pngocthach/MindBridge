@@ -5,6 +5,10 @@ import type {
 } from "@MindBridge/api";
 import { db } from "@MindBridge/db";
 import {
+	assessmentItem,
+	assessmentOption,
+} from "@MindBridge/db/schema/analytics";
+import {
 	contentGeneration,
 	contentSkill,
 	contentSourceReference,
@@ -263,6 +267,39 @@ export class LessonGenerationService implements ContentGenerationPort {
 									skillId: id,
 								})),
 							);
+						}
+					}
+
+					if (draft.quiz_questions.length > 0) {
+						const insertedItems = await tx
+							.insert(assessmentItem)
+							.values(
+								draft.quiz_questions.map((question, index) => ({
+									contentVersionId: version.id,
+									explanation: question.explanation,
+									itemType: "single_choice" as const,
+									ordinal: index + 1,
+									prompt: question.question,
+								})),
+							)
+							.returning({ id: assessmentItem.id });
+						const optionValues = draft.quiz_questions.flatMap(
+							(question, index) => {
+								const itemId = insertedItems[index]?.id;
+								if (!itemId) {
+									return [];
+								}
+								const correctAnswer = question.correct_answer.trim();
+								return question.options.map((optionText, optionIndex) => ({
+									assessmentItemId: itemId,
+									isCorrect: optionText.trim() === correctAnswer,
+									ordinal: optionIndex + 1,
+									text: optionText,
+								}));
+							},
+						);
+						if (optionValues.length > 0) {
+							await tx.insert(assessmentOption).values(optionValues);
 						}
 					}
 

@@ -27,7 +27,7 @@ import {
 	Sparkles,
 	X,
 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
@@ -236,6 +236,7 @@ export function CoursePlayer({
 
 			<div>
 				<LessonCard
+					contentVersionId={currentLesson.contentVersionId}
 					currentIndex={currentIndex}
 					isCompleting={completeLesson.isPending}
 					lesson={currentLesson}
@@ -250,6 +251,12 @@ export function CoursePlayer({
 						previousLesson
 							? () => setSelectedContentId(previousLesson.contentId)
 							: undefined
+					}
+					onQuizSubmitted={() =>
+						completeLesson.mutate({
+							classroomId,
+							contentId: currentLesson.contentId,
+						})
 					}
 					previousTitle={previousLesson?.title}
 					totalCount={courseData.totalCount}
@@ -327,6 +334,7 @@ export function CoursePlayer({
 }
 
 type LessonCardProps = {
+	contentVersionId: string;
 	currentIndex: number;
 	isCompleting: boolean;
 	lesson: {
@@ -340,6 +348,7 @@ type LessonCardProps = {
 	onComplete: () => void;
 	onNext?: () => void;
 	onPrevious?: () => void;
+	onQuizSubmitted: () => void;
 	previousTitle?: string;
 	totalCount: number;
 };
@@ -351,6 +360,7 @@ const contentKindLabels = {
 } as const;
 
 function LessonCard({
+	contentVersionId,
 	currentIndex,
 	isCompleting,
 	lesson,
@@ -358,10 +368,18 @@ function LessonCard({
 	onComplete,
 	onNext,
 	onPrevious,
+	onQuizSubmitted,
 	previousTitle,
 	totalCount,
 }: LessonCardProps) {
-	const lessonMarkdown = getLessonMarkdown(lesson.body);
+	const bodyHasQuiz =
+		isRecord(lesson.body) &&
+		Array.isArray(lesson.body.quiz_questions) &&
+		lesson.body.quiz_questions.length > 0;
+	const isQuiz = lesson.kind === "quiz" || bodyHasQuiz;
+	const lessonMarkdown = getLessonMarkdown(lesson.body, {
+		includeQuiz: !bodyHasQuiz,
+	});
 	const durationMinutes = getMetadataNumber(lesson.metadata, "durationMinutes");
 
 	return (
@@ -387,26 +405,36 @@ function LessonCard({
 			<CardContent>
 				{lessonMarkdown ? (
 					<MarkdownContent content={lessonMarkdown} />
-				) : (
+				) : isQuiz ? null : (
 					<p className="text-muted-foreground text-sm">
 						Bài học này chưa có nội dung hiển thị.
 					</p>
 				)}
-				<div className="mt-8 border-t pt-6">
-					<Button
-						disabled={lesson.isCompleted || isCompleting}
-						onClick={onComplete}
-						type="button"
-						variant={lesson.isCompleted ? "outline" : "default"}
-					>
-						<CheckCircle2 aria-hidden="true" data-icon="inline-start" />
-						{lesson.isCompleted
-							? "Đã hoàn thành"
-							: isCompleting
-								? "Đang lưu…"
-								: "Đánh dấu hoàn thành"}
-					</Button>
-				</div>
+				{isQuiz ? (
+					<div className={lessonMarkdown ? "mt-6 border-t pt-6" : undefined}>
+						<QuizRunner
+							contentVersionId={contentVersionId}
+							isCompleted={lesson.isCompleted}
+							onSubmitted={onQuizSubmitted}
+						/>
+					</div>
+				) : (
+					<div className="mt-8 border-t pt-6">
+						<Button
+							disabled={lesson.isCompleted || isCompleting}
+							onClick={onComplete}
+							type="button"
+							variant={lesson.isCompleted ? "outline" : "default"}
+						>
+							<CheckCircle2 aria-hidden="true" data-icon="inline-start" />
+							{lesson.isCompleted
+								? "Đã hoàn thành"
+								: isCompleting
+									? "Đang lưu…"
+									: "Đánh dấu hoàn thành"}
+						</Button>
+					</div>
+				)}
 			</CardContent>
 			<CardFooter className="flex justify-between gap-3 border-t">
 				<Button
@@ -435,6 +463,167 @@ function LessonCard({
 				</Button>
 			</CardFooter>
 		</Card>
+	);
+}
+
+function QuizRunner({
+	contentVersionId,
+	isCompleted,
+	onSubmitted,
+}: {
+	contentVersionId: string;
+	isCompleted: boolean;
+	onSubmitted: () => void;
+}) {
+	const quiz = useQuery(
+		orpc.mastery.quiz.queryOptions({ input: { contentVersionId } }),
+	);
+	const [answers, setAnswers] = useState<Record<string, string>>({});
+	const [scorePercent, setScorePercent] = useState<number | null>(null);
+	const [resultByItem, setResultByItem] = useState<Map<
+		string,
+		{ correctOptionId: string | null; selectedOptionId: string }
+	> | null>(null);
+	const startedAt = useRef(Date.now());
+	const submit = useMutation(
+		orpc.mastery.submitAttempt.mutationOptions({
+			onError: () => toast.error("Không thể nộp bài kiểm tra. Hãy thử lại."),
+			onSuccess: (data) => {
+				setScorePercent(Math.round((data.attempt.score ?? 0) * 100));
+				setResultByItem(
+					new Map(
+						data.results.map((result) => [
+							result.assessmentItemId,
+							{
+								correctOptionId: result.correctOptionId,
+								selectedOptionId: result.selectedOptionId,
+							},
+						]),
+					),
+				);
+				onSubmitted();
+				toast.success("Đã nộp bài kiểm tra.");
+			},
+		}),
+	);
+
+	if (quiz.isPending) {
+		return <Loader />;
+	}
+	if (quiz.isError) {
+		return (
+			<p className="text-destructive text-sm" role="alert">
+				Không thể tải bài kiểm tra.
+			</p>
+		);
+	}
+
+	const items = quiz.data?.items ?? [];
+	if (items.length === 0) {
+		return (
+			<p className="text-muted-foreground text-sm">
+				Bài kiểm tra này chưa có câu hỏi.
+			</p>
+		);
+	}
+
+	const isSubmitted = scorePercent !== null;
+	const allAnswered = items.every((item) => answers[item.id]);
+	const handleSubmit = () => {
+		if (!allAnswered || submit.isPending || isSubmitted) {
+			return;
+		}
+		const durationSeconds = Math.max(
+			1,
+			Math.round((Date.now() - startedAt.current) / 1000),
+		);
+		submit.mutate({
+			contentVersionId,
+			durationSeconds,
+			responses: items.map((item) => ({
+				assessmentItemId: item.id,
+				attemptNumber: 1,
+				selectedOptionId: answers[item.id] as string,
+			})),
+		});
+	};
+
+	return (
+		<div className="space-y-5">
+			{items.map((item, index) => {
+				const itemResult = resultByItem?.get(item.id);
+				return (
+					<fieldset
+						className="space-y-2"
+						disabled={submit.isPending || isSubmitted}
+						key={item.id}
+					>
+						<legend className="font-medium text-sm">
+							{index + 1}. {item.prompt}
+						</legend>
+						{item.options.map((option) => {
+							const isCorrectOption =
+								itemResult && option.id === itemResult.correctOptionId;
+							const isWrongChoice =
+								itemResult &&
+								option.id === itemResult.selectedOptionId &&
+								option.id !== itemResult.correctOptionId;
+							const stateClass = isCorrectOption
+								? "border-emerald-500 bg-emerald-50 text-emerald-900"
+								: isWrongChoice
+									? "border-destructive bg-destructive/10 text-destructive"
+									: "has-[:checked]:border-primary has-[:checked]:bg-primary/5";
+							return (
+								<label
+									className={`flex cursor-pointer items-start gap-3 border p-3 text-sm ${stateClass}`}
+									key={option.id}
+								>
+									<input
+										checked={answers[item.id] === option.id}
+										className="mt-0.5"
+										name={item.id}
+										onChange={() =>
+											setAnswers((current) => ({
+												...current,
+												[item.id]: option.id,
+											}))
+										}
+										type="radio"
+									/>
+									<span>{option.text}</span>
+									{isCorrectOption ? (
+										<CheckCircle2
+											aria-hidden="true"
+											className="ml-auto size-4 shrink-0 text-emerald-600"
+										/>
+									) : null}
+								</label>
+							);
+						})}
+					</fieldset>
+				);
+			})}
+			{isSubmitted ? (
+				<div className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 text-sm">
+					<CheckCircle2 aria-hidden="true" className="size-4" />
+					Đã nộp · Kết quả: {scorePercent}% đúng
+				</div>
+			) : (
+				<Button
+					disabled={!allAnswered || submit.isPending}
+					onClick={handleSubmit}
+					type="button"
+				>
+					<CheckCircle2 aria-hidden="true" data-icon="inline-start" />
+					{submit.isPending ? "Đang nộp…" : "Nộp bài kiểm tra"}
+				</Button>
+			)}
+			{isCompleted && !isSubmitted ? (
+				<p className="text-muted-foreground text-xs">
+					Bạn đã hoàn thành bài kiểm tra này. Làm lại để cập nhật kết quả.
+				</p>
+			) : null}
+		</div>
 	);
 }
 

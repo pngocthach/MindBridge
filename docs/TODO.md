@@ -8,7 +8,7 @@
 - [ ] Làm lại flow tài liệu nguồn để bỏ bớt các bước kiểm duyệt cho nhanh
 - [ ] Bỏ tự lưu tài liệu khi up lên, chỉ lưu khi mà user bấm lưu thôi (luồng ở trên content studio)
 - [ ] Thêm 1 cái nút sau khi gen ra thì gắn luôn vào khoá học
-- [ ] UI quizz cho học viên + đánh giá cho học viên , đang để mỗi là text -> không tương tác với chọn được
+- [x] UI quizz cho học viên + đánh giá cho học viên , đang để mỗi là text -> không tương tác với chọn được
 - [ ] Gen content có hình ảnh và các format khác
 - [ ] Up tài liệu nguồn lên thì lúc nó parse ra thì nên có nút loading/thinking (có thể ở nút tạo bài học với AI) (giống claude)
 - [x] Bỏ mấy cái khối lớp, mô tả hoặc để optional

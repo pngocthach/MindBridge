@@ -78,7 +78,7 @@ export interface CourseSearchInput {
 }
 
 export interface CourseOption {
-	gradeLevel: number;
+	gradeLevel: number | null;
 	id: string;
 	title: string;
 }

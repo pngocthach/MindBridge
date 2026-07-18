@@ -78,7 +78,11 @@ const getContentBlocks = (body: unknown): ContentBlock[] => {
 	return blocks;
 };
 
-export const getLessonMarkdown = (body: unknown): string => {
+export const getLessonMarkdown = (
+	body: unknown,
+	options?: { includeQuiz?: boolean },
+): string => {
+	const includeQuiz = options?.includeQuiz ?? true;
 	if (!isRecord(body)) {
 		return contentValueToText(body);
 	}
@@ -120,9 +124,10 @@ export const getLessonMarkdown = (body: unknown): string => {
 		);
 	}
 
-	const quizQuestions = Array.isArray(body.quiz_questions)
-		? body.quiz_questions.filter(isRecord)
-		: [];
+	const quizQuestions =
+		includeQuiz && Array.isArray(body.quiz_questions)
+			? body.quiz_questions.filter(isRecord)
+			: [];
 	if (quizQuestions.length > 0) {
 		sections.push(
 			`## Kiểm tra kiến thức\n\n${quizQuestions

@@ -70,6 +70,65 @@ const evidenceWeight = (attemptNumber: number): number =>
 	roundMastery(Math.min(2, 1 + (attemptNumber - 1) * 0.25));
 
 export const masteryRouter = {
+	quiz: protectedProcedure
+		.input(z.object({ contentVersionId: z.string().uuid() }))
+		.handler(async ({ input }) => {
+			const [version] = await db
+				.select({ id: contentVersion.id })
+				.from(contentVersion)
+				.where(
+					and(
+						eq(contentVersion.id, input.contentVersionId),
+						eq(contentVersion.status, "published"),
+					),
+				)
+				.limit(1);
+			if (!version) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Không tìm thấy bài kiểm tra đã xuất bản.",
+				});
+			}
+
+			const items = await db
+				.select({
+					id: assessmentItem.id,
+					itemType: assessmentItem.itemType,
+					ordinal: assessmentItem.ordinal,
+					prompt: assessmentItem.prompt,
+				})
+				.from(assessmentItem)
+				.where(eq(assessmentItem.contentVersionId, input.contentVersionId))
+				.orderBy(asc(assessmentItem.ordinal));
+			if (items.length === 0) {
+				return { contentVersionId: input.contentVersionId, items: [] };
+			}
+
+			const options = await db
+				.select({
+					assessmentItemId: assessmentOption.assessmentItemId,
+					id: assessmentOption.id,
+					ordinal: assessmentOption.ordinal,
+					text: assessmentOption.text,
+				})
+				.from(assessmentOption)
+				.where(
+					inArray(
+						assessmentOption.assessmentItemId,
+						items.map((item) => item.id),
+					),
+				)
+				.orderBy(asc(assessmentOption.ordinal));
+
+			return {
+				contentVersionId: input.contentVersionId,
+				items: items.map((item) => ({
+					...item,
+					options: options
+						.filter((option) => option.assessmentItemId === item.id)
+						.map(({ id, text }) => ({ id, text })),
+				})),
+			};
+		}),
 	practice: protectedProcedure.handler(async () => {
 		const [item] = await db
 			.select({
@@ -393,10 +452,34 @@ export const masteryRouter = {
 					}
 				}
 
+				const correctOptions = await transaction
+					.select({
+						assessmentItemId: assessmentOption.assessmentItemId,
+						id: assessmentOption.id,
+					})
+					.from(assessmentOption)
+					.where(
+						and(
+							inArray(assessmentOption.assessmentItemId, assessmentItemIds),
+							eq(assessmentOption.isCorrect, true),
+						),
+					);
+				const correctOptionByItem = new Map(
+					correctOptions.map((option) => [option.assessmentItemId, option.id]),
+				);
+				const results = classifiedResponses.map((response) => ({
+					assessmentItemId: response.assessmentItemId,
+					correctOptionId:
+						correctOptionByItem.get(response.assessmentItemId) ?? null,
+					isCorrect: response.isCorrect,
+					selectedOptionId: response.selectedOptionId,
+				}));
+
 				return {
 					attempt,
 					evidence: evidenceValues,
 					mastery: masteryUpdates,
+					results,
 				};
 			}),
 		),
