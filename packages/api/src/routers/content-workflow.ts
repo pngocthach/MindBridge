@@ -215,6 +215,65 @@ const archiveVersion = async (
 	});
 
 export const contentWorkflowRouter = {
+	editGeneratedDraft: permissionProcedure("content:create")
+		.input(
+			z.object({
+				body: z.record(z.string(), z.unknown()),
+				contentVersionId: z.string().uuid(),
+				title: z.string().trim().min(1).max(255).optional(),
+			}),
+		)
+		.handler(({ context, input }) =>
+			db.transaction(async (transaction) => {
+				const [version] = await transaction
+					.select({
+						contentId: contentVersion.contentId,
+						metadata: contentVersion.metadata,
+					})
+					.from(contentVersion)
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.createdBy, context.session.user.id),
+							eq(contentVersion.status, "draft"),
+						),
+					)
+					.limit(1);
+				if (!version) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Không tìm thấy bản nháp bạn có thể sửa.",
+					});
+				}
+
+				const existingMetadata = version.metadata as Record<string, unknown>;
+				const metadata =
+					input.title === undefined
+						? existingMetadata
+						: { ...existingMetadata, _draftTitle: input.title };
+				const [updatedVersion] = await transaction
+					.update(contentVersion)
+					.set({ body: input.body, metadata })
+					.where(
+						and(
+							eq(contentVersion.id, input.contentVersionId),
+							eq(contentVersion.status, "draft"),
+						),
+					)
+					.returning({ id: contentVersion.id });
+				if (!updatedVersion) {
+					throw new ORPCError("CONFLICT", {
+						message: "Bản nháp đã đổi trạng thái trước khi lưu.",
+					});
+				}
+				if (input.title !== undefined) {
+					await transaction
+						.update(learningContent)
+						.set({ title: input.title })
+						.where(eq(learningContent.id, version.contentId));
+				}
+				return updatedVersion;
+			}),
+		),
 	addGeneratedToCourse: permissionProcedure("content:create")
 		.input(z.object({ contentVersionId: z.string().uuid() }))
 		.handler(({ context, input }) =>

@@ -529,6 +529,11 @@ export default function ContentStudio({
 	const [assignmentStatus, setAssignmentStatus] = useState("");
 	const [attachError, setAttachError] = useState("");
 	const [attachStatus, setAttachStatus] = useState("");
+	const [isEditing, setIsEditing] = useState(false);
+	const [editTitle, setEditTitle] = useState("");
+	const [editSummary, setEditSummary] = useState("");
+	const [editObjectives, setEditObjectives] = useState<string[]>([]);
+	const [editError, setEditError] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isGenerationComplete, setIsGenerationComplete] = useState(false);
 	const [generationStatus, setGenerationStatus] = useState("");
@@ -589,6 +594,56 @@ export default function ContentStudio({
 			},
 		}),
 	);
+	const editDraft = useMutation(
+		orpc.contentWorkflow.editGeneratedDraft.mutationOptions({
+			onError: (error) => setEditError(error.message),
+		}),
+	);
+
+	const startEditing = (): void => {
+		if (!draft) {
+			return;
+		}
+		setEditError("");
+		setEditTitle(asString(draft.title));
+		setEditSummary(asString(draft.summary));
+		setEditObjectives(
+			asRecords(draft.objectives).map((objective) => asString(objective.text)),
+		);
+		setIsEditing(true);
+	};
+
+	const saveEdits = async (): Promise<void> => {
+		if (!(draft && generatedContent)) {
+			return;
+		}
+		const trimmedTitle = editTitle.trim();
+		if (!trimmedTitle) {
+			setEditError("Tiêu đề không được để trống.");
+			return;
+		}
+		const nextBody = {
+			...draft,
+			objectives: asRecords(draft.objectives).map((objective, index) => ({
+				...objective,
+				text: editObjectives[index] ?? asString(objective.text),
+			})),
+			summary: editSummary,
+			title: trimmedTitle,
+		};
+		setEditError("");
+		try {
+			await editDraft.mutateAsync({
+				body: nextBody,
+				contentVersionId: generatedContent.contentVersionId,
+				title: trimmedTitle,
+			});
+			setDraft(nextBody);
+			setIsEditing(false);
+		} catch {
+			// editError is set by the mutation onError handler.
+		}
+	};
 
 	const sourceDetail = useQuery(
 		orpc.sourceDocuments.detail.queryOptions({
@@ -616,6 +671,8 @@ export default function ContentStudio({
 		setAssignmentStatus("");
 		setAttachError("");
 		setAttachStatus("");
+		setIsEditing(false);
+		setEditError("");
 		setIsGenerationComplete(false);
 		setIsGenerating(true);
 		setGenerationError("");
@@ -978,10 +1035,81 @@ export default function ContentStudio({
 								/>
 							)}
 							{isGenerationComplete && draft ? (
-								<LessonDraftPreview
-									draft={draft}
-									sourceChunks={sourceDetail.data?.chunks ?? []}
-								/>
+								isEditing ? (
+									<div className="space-y-4 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+										<h3 className="font-semibold">Chỉnh sửa nội dung</h3>
+										<div className="space-y-2">
+											<Label htmlFor="edit-title">Tiêu đề</Label>
+											<Input
+												disabled={editDraft.isPending}
+												id="edit-title"
+												onChange={(event) => setEditTitle(event.target.value)}
+												value={editTitle}
+											/>
+										</div>
+										<div className="space-y-2">
+											<Label htmlFor="edit-summary">Tóm tắt</Label>
+											<Textarea
+												disabled={editDraft.isPending}
+												id="edit-summary"
+												onChange={(event) => setEditSummary(event.target.value)}
+												value={editSummary}
+											/>
+										</div>
+										{editObjectives.length > 0 ? (
+											<div className="space-y-2">
+												<Label>Mục tiêu học tập</Label>
+												{editObjectives.map((objective, index) => (
+													<Input
+														disabled={editDraft.isPending}
+														key={`edit-objective-${index}`}
+														onChange={(event) =>
+															setEditObjectives((current) =>
+																current.map((item, itemIndex) =>
+																	itemIndex === index
+																		? event.target.value
+																		: item,
+																),
+															)
+														}
+														value={objective}
+													/>
+												))}
+											</div>
+										) : null}
+										{editError ? (
+											<p className="text-destructive text-sm" role="alert">
+												{editError}
+											</p>
+										) : null}
+										<div className="flex flex-wrap gap-3">
+											<Button
+												disabled={editDraft.isPending}
+												onClick={saveEdits}
+												type="button"
+											>
+												{editDraft.isPending ? "Đang lưu…" : "Lưu thay đổi"}
+											</Button>
+											<Button
+												disabled={editDraft.isPending}
+												onClick={() => setIsEditing(false)}
+												type="button"
+												variant="outline"
+											>
+												Hủy
+											</Button>
+										</div>
+										<p className="text-muted-foreground text-xs">
+											Lưu ý: câu hỏi kiểm tra tương tác được tạo lúc sinh bài;
+											sửa ở đây chỉ đổi nội dung hiển thị.
+										</p>
+									</div>
+								) : (
+									<LessonDraftPreview
+										draft={draft}
+										sourceChunks={sourceDetail.data?.chunks ?? []}
+									/>
+								)
 							) : !generationError ? (
 								<p className="text-muted-foreground text-sm">
 									Bản xem trước sẽ mở khi AI hoàn tất cấu trúc bài học.
@@ -992,6 +1120,7 @@ export default function ContentStudio({
 									<div className="flex flex-wrap gap-3">
 										<Button
 											disabled={
+												isEditing ||
 												addToCourse.isPending ||
 												publishAndAssign.isPending ||
 												Boolean(attachStatus) ||
@@ -1009,6 +1138,19 @@ export default function ContentStudio({
 										</Button>
 										<Button
 											disabled={
+												isEditing ||
+												Boolean(attachStatus) ||
+												Boolean(assignmentStatus)
+											}
+											onClick={startEditing}
+											type="button"
+											variant="outline"
+										>
+											Chỉnh sửa nội dung
+										</Button>
+										<Button
+											disabled={
+												isEditing ||
 												!canGenerate ||
 												Boolean(attachStatus) ||
 												Boolean(assignmentStatus)
