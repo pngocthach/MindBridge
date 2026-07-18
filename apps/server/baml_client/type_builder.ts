@@ -40,8 +40,6 @@ export default class TypeBuilder {
     
     ExerciseDifficulty: EnumViewer<'ExerciseDifficulty', "EASY" | "STANDARD">;
     
-    SourceChunkId: EnumBuilder<'SourceChunkId'>;
-    
 
     constructor() {
         this.tb = new _TypeBuilder({
@@ -49,7 +47,7 @@ export default class TypeBuilder {
             "Exercise","LearningObjective","LessonDraft","QuizQuestion","SourceChunk",
           ]),
           enums: new Set([
-            "ExerciseDifficulty","SourceChunkId",
+            "ExerciseDifficulty",
           ]),
           runtime: DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME
         });
@@ -77,10 +75,6 @@ export default class TypeBuilder {
         
         this.ExerciseDifficulty = this.tb.enumViewer("ExerciseDifficulty", [
           "EASY","STANDARD",
-        ]);
-        
-        this.SourceChunkId = this.tb.enumBuilder("SourceChunkId", [
-          
         ]);
         
     }

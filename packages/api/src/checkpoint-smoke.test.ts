@@ -7,14 +7,8 @@ import type { ApiContext } from "./index";
 
 dotenv.config({ path: "apps/server/.env" });
 
-const {
-	classroom,
-	course,
-	db,
-	learnerSkillMastery,
-	recommendationRun,
-	user,
-} = await import("@MindBridge/db");
+const { classroom, course, db, learnerSkillMastery, recommendationRun, user } =
+	await import("@MindBridge/db");
 const { demoSeedIds, seedDemoData } = await import("@MindBridge/db/seed");
 const { appRouter } = await import("./routers/index");
 

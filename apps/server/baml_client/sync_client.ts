@@ -22,7 +22,7 @@ import type { BamlRuntime, FunctionResult, BamlCtxManager, Image, Audio, Pdf, Vi
 import { toBamlError, BamlAbortError, ClientRegistry, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type * as types from "./types"
-import type {Exercise, ExerciseDifficulty, LearningObjective, LessonDraft, QuizQuestion, SourceChunk, SourceChunkId} from "./types"
+import type {Exercise, ExerciseDifficulty, LearningObjective, LessonDraft, QuizQuestion, SourceChunk} from "./types"
 import type TypeBuilder from "./type_builder"
 import { HttpRequest, HttpStreamRequest } from "./sync_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"

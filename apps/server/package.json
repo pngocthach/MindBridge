@@ -4,7 +4,7 @@
 	"main": "src/index.ts",
 	"scripts": {
 		"baml:generate": "baml generate && node scripts/fix-baml-imports.mjs",
-		"build": "pnpm baml:generate && tsdown",
+		"build": "pnpm baml:generate && tsdown --config-loader tsx",
 		"check-types": "tsc -b",
 		"compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
 		"dev": "tsx watch src/index.ts",

@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  Exercise,  ExerciseDifficulty,  LearningObjective,  LessonDraft,  QuizQuestion,  SourceChunk,  SourceChunkId } from "./types"
+import type {  Exercise,  ExerciseDifficulty,  LearningObjective,  LessonDraft,  QuizQuestion,  SourceChunk } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -41,16 +41,16 @@ export namespace partial_types {
       prompt?: string | null
       expected_answer?: string | null
       explanation?: string | null
-      source_chunk_ids: (string | types.SourceChunkId)[]
+      source_chunk_ids: string[]
     }
     export interface LearningObjective {
       text?: string | null
-      source_chunk_ids: (string | types.SourceChunkId)[]
+      source_chunk_ids: string[]
     }
     export interface LessonDraft {
       title?: string | null
       summary?: string | null
-      summary_source_chunk_ids: (string | types.SourceChunkId)[]
+      summary_source_chunk_ids: string[]
       objectives: LearningObjective[]
       quiz_questions: QuizQuestion[]
       exercises: Exercise[]
@@ -60,7 +60,7 @@ export namespace partial_types {
       options: string[]
       correct_answer?: string | null
       explanation?: string | null
-      source_chunk_ids: (string | types.SourceChunkId)[]
+      source_chunk_ids: string[]
     }
     export interface SourceChunk {
       id?: string | null
