@@ -177,7 +177,10 @@ export function CoursePlayer({
 						<div>
 							<CardTitle>{courseData.courseTitle}</CardTitle>
 							<CardDescription className="mt-1">
-								{courseData.classroomName} · {courseData.courseDescription}
+								{courseData.classroomName}
+								{courseData.courseDescription
+									? ` · ${courseData.courseDescription}`
+									: ""}
 							</CardDescription>
 						</div>
 						<p className="text-muted-foreground text-xs">

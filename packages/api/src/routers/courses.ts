@@ -19,8 +19,8 @@ const courseFields = {
 const courseDetailsInput = z.object({ courseId: z.string().uuid() });
 
 const courseValues = z.object({
-	description: z.string().trim().min(1).max(5000),
-	gradeLevel: z.number().int().min(1).max(12),
+	description: z.string().trim().max(5000).optional(),
+	gradeLevel: z.number().int().min(1).max(12).optional(),
 	language: z.string().trim().min(2).max(10).default("vi"),
 	title: z.string().trim().min(1).max(255),
 });

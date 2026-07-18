@@ -44,8 +44,8 @@ const emptyCourseForm: CourseFormValues = {
 };
 
 const courseToForm = (course: Course): CourseFormValues => ({
-	description: course.description,
-	gradeLevel: String(course.gradeLevel),
+	description: course.description ?? "",
+	gradeLevel: course.gradeLevel == null ? "" : String(course.gradeLevel),
 	language: course.language,
 	title: course.title,
 });
@@ -155,19 +155,22 @@ export default function CourseCurriculumManager() {
 	);
 
 	const submitCourse = () => {
-		const gradeLevel = Number(courseForm.gradeLevel);
-		if (
-			!courseForm.title.trim() ||
-			!courseForm.description.trim() ||
-			!Number.isInteger(gradeLevel) ||
-			gradeLevel < 1 ||
-			gradeLevel > 12
-		) {
-			toast.error("Nhập đủ tiêu đề, mô tả và khối lớp hợp lệ.");
+		if (!courseForm.title.trim()) {
+			toast.error("Nhập tiêu đề khóa học.");
 			return;
 		}
+		const trimmedGrade = courseForm.gradeLevel.trim();
+		const gradeLevel = trimmedGrade === "" ? undefined : Number(trimmedGrade);
+		if (
+			gradeLevel !== undefined &&
+			(!Number.isInteger(gradeLevel) || gradeLevel < 1 || gradeLevel > 12)
+		) {
+			toast.error("Khối lớp phải từ 1 đến 12.");
+			return;
+		}
+		const trimmedDescription = courseForm.description.trim();
 		const values = {
-			description: courseForm.description,
+			description: trimmedDescription === "" ? undefined : trimmedDescription,
 			gradeLevel,
 			language: courseForm.language,
 			title: courseForm.title,
@@ -278,7 +281,8 @@ export default function CourseCurriculumManager() {
 							>
 								<span className="block font-medium">{course.title}</span>
 								<span className="text-muted-foreground text-xs">
-									Khối {course.gradeLevel} · {course.language}
+									{course.gradeLevel ? `Khối ${course.gradeLevel} · ` : ""}
+									{course.language}
 								</span>
 							</button>
 						))}
@@ -298,7 +302,13 @@ export default function CourseCurriculumManager() {
 					</CardHeader>
 					<CardContent className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-2 sm:col-span-2">
-							<Label htmlFor="course-title">Tiêu đề</Label>
+							<Label htmlFor="course-title">
+								Tiêu đề{" "}
+								<span aria-hidden="true" className="text-destructive">
+									*
+								</span>
+								<span className="sr-only"> bắt buộc</span>
+							</Label>
 							<Input
 								id="course-title"
 								onChange={(event) =>
@@ -311,7 +321,12 @@ export default function CourseCurriculumManager() {
 							/>
 						</div>
 						<div className="space-y-2 sm:col-span-2">
-							<Label htmlFor="course-description">Mô tả</Label>
+							<Label htmlFor="course-description">
+								Mô tả{" "}
+								<span className="font-normal text-muted-foreground text-xs">
+									(không bắt buộc)
+								</span>
+							</Label>
 							<Textarea
 								id="course-description"
 								onChange={(event) =>
@@ -324,7 +339,12 @@ export default function CourseCurriculumManager() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="course-grade">Khối lớp</Label>
+							<Label htmlFor="course-grade">
+								Khối lớp{" "}
+								<span className="font-normal text-muted-foreground text-xs">
+									(không bắt buộc)
+								</span>
+							</Label>
 							<Input
 								id="course-grade"
 								max="12"

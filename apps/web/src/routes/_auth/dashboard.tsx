@@ -26,8 +26,8 @@ type CourseSummary = {
 	classroomId: string;
 	classroomName: string;
 	completedCount: number;
-	courseDescription: string;
-	courseGradeLevel: number;
+	courseDescription: string | null;
+	courseGradeLevel: number | null;
 	courseId: string;
 	courseLanguage: string;
 	courseTitle: string;
@@ -297,7 +297,10 @@ function CourseList({ courses }: { courses: CourseSummary[] }) {
 							/>
 						</div>
 						<p className="mt-1 text-muted-foreground text-xs">
-							{courseItem.classroomName} · Lớp {courseItem.courseGradeLevel}
+							{courseItem.classroomName}
+							{courseItem.courseGradeLevel
+								? ` · Lớp ${courseItem.courseGradeLevel}`
+								: ""}
 						</p>
 						<div
 							aria-label={`Tiến độ ${courseItem.courseTitle}`}

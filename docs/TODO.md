@@ -11,8 +11,8 @@
 - [ ] UI quizz cho học viên + đánh giá cho học viên , đang để mỗi là text -> không tương tác với chọn được
 - [ ] Gen content có hình ảnh và các format khác
 - [ ] Up tài liệu nguồn lên thì lúc nó parse ra thì nên có nút loading/thinking (có thể ở nút tạo bài học với AI) (giống claude)
-- [ ] Bỏ mấy cái khối lớp, mô tả hoặc để optional
-- [ ] Thêm dấu sao required cho mấy chỗ chưa có
+- [x] Bỏ mấy cái khối lớp, mô tả hoặc để optional
+- [x] Thêm dấu sao required cho mấy chỗ chưa có
 - [ ] Check lại mấy cái skill id xem có cần không
 - [ ] Cho user custom prompt lúc gen bài học (optional)
 - [ ] Cái AI gen ra mới readonly, chưa edit được

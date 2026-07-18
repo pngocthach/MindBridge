@@ -36,6 +36,13 @@
 			"when": 1784355662985,
 			"tag": "0004_tense_stryfe",
 			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1784398138791,
+			"tag": "0005_material_husk",
+			"breakpoints": true
 		}
 	]
 }

@@ -36,8 +36,8 @@ export const course = pgTable(
 	{
 		id: uuid("id").defaultRandom().primaryKey(),
 		title: text("title").notNull(),
-		description: text("description").notNull(),
-		gradeLevel: integer("grade_level").notNull(),
+		description: text("description"),
+		gradeLevel: integer("grade_level"),
 		language: text("language").default("vi").notNull(),
 		createdBy: text("created_by")
 			.notNull()

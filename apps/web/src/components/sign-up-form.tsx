@@ -89,7 +89,13 @@ export default function SignUpForm({
 						<form.Field name="name">
 							{(field) => (
 								<div className="space-y-2">
-									<Label htmlFor={field.name}>Họ và tên</Label>
+									<Label htmlFor={field.name}>
+										Họ và tên{" "}
+										<span aria-hidden="true" className="text-destructive">
+											*
+										</span>
+										<span className="sr-only"> bắt buộc</span>
+									</Label>
 									<Input
 										autoComplete="name"
 										id={field.name}
@@ -114,7 +120,13 @@ export default function SignUpForm({
 						<form.Field name="email">
 							{(field) => (
 								<div className="space-y-2">
-									<Label htmlFor={field.name}>Email</Label>
+									<Label htmlFor={field.name}>
+										Email{" "}
+										<span aria-hidden="true" className="text-destructive">
+											*
+										</span>
+										<span className="sr-only"> bắt buộc</span>
+									</Label>
 									<Input
 										autoComplete="email"
 										id={field.name}
@@ -140,7 +152,13 @@ export default function SignUpForm({
 						<form.Field name="password">
 							{(field) => (
 								<div className="space-y-2">
-									<Label htmlFor={field.name}>Mật khẩu</Label>
+									<Label htmlFor={field.name}>
+										Mật khẩu{" "}
+										<span aria-hidden="true" className="text-destructive">
+											*
+										</span>
+										<span className="sr-only"> bắt buộc</span>
+									</Label>
 									<Input
 										autoComplete="new-password"
 										id={field.name}

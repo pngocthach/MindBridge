@@ -51,7 +51,7 @@ type SourceChunk = {
 const EMPTY_DOCUMENT_ID = "00000000-0000-0000-0000-000000000000";
 
 type CourseOption = {
-	gradeLevel: number;
+	gradeLevel: number | null;
 	id: string;
 	title: string;
 };
@@ -794,8 +794,10 @@ export default function ContentStudio({
 							)}
 							{selectedCourse && (
 								<p className="text-muted-foreground text-xs">
-									Đã chọn: {selectedCourse.title} · Khối{" "}
-									{selectedCourse.gradeLevel}
+									Đã chọn: {selectedCourse.title}
+									{selectedCourse.gradeLevel
+										? ` · Khối ${selectedCourse.gradeLevel}`
+										: ""}
 								</p>
 							)}
 						</div>
