@@ -1,5 +1,7 @@
 import {
+	assessmentItem,
 	contentReviewEvent,
+	contentSkill,
 	contentVersion,
 	courseContent,
 	db,
@@ -95,6 +97,42 @@ type TransitionOptions = {
 	updates?: Partial<typeof contentVersion.$inferInsert>;
 };
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * A version that carries quiz questions but no primary skill can never be
+ * submitted: mastery.submitAttempt requires at least one non-supporting skill
+ * to score against. Reject it at publish time so the teacher finds out while
+ * they can still fix it, instead of the learner hitting a dead end.
+ */
+const assertPublishable = async (transaction: Transaction, id: string) => {
+	const [item] = await transaction
+		.select({ id: assessmentItem.id })
+		.from(assessmentItem)
+		.where(eq(assessmentItem.contentVersionId, id))
+		.limit(1);
+	if (!item) {
+		return;
+	}
+
+	const [primarySkill] = await transaction
+		.select({ skillId: contentSkill.skillId })
+		.from(contentSkill)
+		.where(
+			and(
+				eq(contentSkill.contentVersionId, id),
+				ne(contentSkill.coverage, "supporting"),
+			),
+		)
+		.limit(1);
+	if (!primarySkill) {
+		throw new ORPCError("BAD_REQUEST", {
+			message:
+				"Học liệu có câu hỏi kiểm tra nên phải gắn ít nhất một kỹ năng chính trước khi xuất bản.",
+		});
+	}
+};
+
 const transitionVersion = async ({
 	actorId,
 	fromStatus,
@@ -104,6 +142,10 @@ const transitionVersion = async ({
 	updates = {},
 }: TransitionOptions) =>
 	db.transaction(async (transaction) => {
+		if (toStatus === "published") {
+			await assertPublishable(transaction, id);
+		}
+
 		const [updatedVersion] = await transaction
 			.update(contentVersion)
 			.set({ ...updates, status: toStatus })
@@ -306,6 +348,7 @@ export const contentWorkflowRouter = {
 						message: "Chỉ bản nháp mới có thể xuất bản và gắn vào khóa học.",
 					});
 				}
+				await assertPublishable(transaction, input.contentVersionId);
 
 				const reviewedAt = new Date();
 				const [publishedVersion] = await transaction
