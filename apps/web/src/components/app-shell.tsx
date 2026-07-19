@@ -125,7 +125,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
 				className:
 					"bg-sidebar-accent text-sidebar-accent-foreground shadow-sm before:bg-sidebar-primary",
 			}}
-			className={`relative flex shrink-0 items-center gap-2.5 rounded-lg py-2.5 font-medium text-sidebar-foreground/70 text-sm transition-all before:absolute before:top-2 before:bottom-2 before:left-0 before:w-1 before:rounded-full hover:-translate-y-0.5 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground ${
+			className={`relative flex shrink-0 items-center gap-2.5 rounded-lg py-2.5 font-medium text-sidebar-foreground/70 text-sm transition-all before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-1 before:rounded-full hover:-translate-y-0.5 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground ${
 				collapsed ? "md:justify-center md:px-0 px-3.5" : "px-3.5"
 			}`}
 			to={item.to}
